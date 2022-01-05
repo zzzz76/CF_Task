@@ -139,4 +139,5 @@ dmypy.json
 .pyre/
 
 dataset1/
-datasets
+datasets/
+dataset2/

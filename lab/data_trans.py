@@ -23,15 +23,15 @@ def transform(data_path):
     for i in range(m):
         for j in range(n):
             rating = src_data[i][j]
-            if rating > 0 and rating < 5:
+            if rating > 0 and rating < 10:
                 tar_data.append([i, j, rating])
 
     tar_data = pd.DataFrame(tar_data, columns=['userId', 'webId', 'rating'])
     return tar_data
 
 if __name__ == '__main__':
-    src_file = "dataset1/rtMatrix.txt"
-    tar_file = "dataset1/ratings.csv"
+    src_file = "../dataset2/rtMatrix.txt"
+    tar_file = "../dataset2/ratings.csv"
     print("=========== transform start =============")
     tar_data = transform(src_file)
     tar_data.to_csv(tar_file, index=False)

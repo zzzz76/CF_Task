@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 
 
-def data_split(data_path, x=0.3, random=False):
+def data_split(data_path, x=0.6, random=False):
     '''
     切分数据集， 这里为了保证用户数量保持不变，将每个用户的评分数据按比例进行拆分
     :param data_path: 数据集路径
@@ -47,10 +47,10 @@ def data_split(data_path, x=0.3, random=False):
     return trainset, testset, validset
 
 if __name__ == '__main__':
-    rating = "dataset1/ratings.csv"
-    training = "dataset1/training.csv"
-    testing = "dataset1/testing.csv"
-    validation = "dataset1/validation.csv"
+    rating = "../dataset2/ratings.csv"
+    training = "../dataset2/training.csv"
+    testing = "../dataset2/testing.csv"
+    validation = "../dataset2/validation.csv"
 
     print("=========== split start =============")
     trainset, testset, validset= data_split(rating, random=True)

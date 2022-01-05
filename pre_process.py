@@ -6,16 +6,16 @@ Used to preprocess the raw data
 import pandas as pd
 import numpy as np
 
-def transform(src_file, tar_file):
+def transform(data_path):
     """
     Transform the data format from matrix to array
-    :param src_file: the source file
-    :param tar_file: the target file
+    :param data_path: the data path
+    :return the target data
     """
     src_data = []
     tar_data = []
-    with open(src_file) as sf:
-        for line in sf:
+    with open(data_path) as df:
+        for line in df:
             src_data.append(list(map(float, line.split())))
         src_data = np.array(src_data)
 
@@ -26,13 +26,13 @@ def transform(src_file, tar_file):
             if rating > 0 and rating < 5:
                 tar_data.append([i, j, rating])
 
-    pd_data = pd.DataFrame(tar_data, columns=['userId', 'webId', 'rating'])
-    pd_data.to_csv(tar_file, index=False)
-
+    tar_data = pd.DataFrame(tar_data, columns=['userId', 'webId', 'rating'])
+    return tar_data
 
 if __name__ == '__main__':
     src_file = "dataset1/rtMatrix.txt"
     tar_file = "dataset1/ratings.csv"
     print("=========== transform start =============")
-    transform(src_file, tar_file)
+    tar_data = transform(src_file)
+    tar_data.to_csv(tar_file, index=False)
     print("=========== transform end =============")

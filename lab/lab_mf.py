@@ -73,14 +73,16 @@ class LFM(object):
         self.number_epochs = number_epochs  # 最大迭代次数
         self.columns = columns
 
-    def fit(self, dataset):
+    def fit(self, dataset, validset):
         '''
         fit dataset
         :param dataset: uid, iid, rating
+        :param validset: uid, iid, rating
         :return:
         '''
 
         self.dataset = pd.DataFrame(dataset)
+        self.validset = pd.DataFrame(validset)
 
         self.users_ratings = dataset.groupby(self.columns[0]).agg([list])[[self.columns[1], self.columns[2]]]
         self.items_ratings = dataset.groupby(self.columns[1]).agg([list])[[self.columns[0], self.columns[2]]]
@@ -112,6 +114,8 @@ class LFM(object):
         :return:
         '''
         P, Q = self._init_matrix()
+        rmse_min = 10
+        rmse_count = 0
 
         for i in range(self.number_epochs):
             print("iter%d" % i)
@@ -133,10 +137,22 @@ class LFM(object):
                 #     v_pu[k] += self.alpha*(err*v_qi[k] - self.reg_p*v_pu[k])
                 #     v_qi[k] += self.alpha*(err*v_pu[k] - self.reg_q*v_qi[k])
 
-                # error_list.append(err ** 2)
-                error_list.append(abs(err))
-            # print(np.sqrt(np.mean(error_list)))
-            print(np.mean(error_list))
+                error_list.append(err ** 2)
+            print(np.sqrt(np.mean(error_list)))
+
+            # 快速停止策略，如果valid 连续5次增加
+            # valid_results = lfm.test(self.validset)
+            # rmse = accuray(valid_results, "rmse")
+            # print(rmse)
+            #
+            # if rmse < rmse_min:
+            #     rmse_min = rmse
+            #     rmse_count = 0
+            # elif rmse_count < 5:
+            #     rmse_count += 1
+            # else:
+            #     break
+
         return P, Q
 
     def predict(self, uid, iid):
@@ -160,26 +176,23 @@ class LFM(object):
                 yield uid, iid, real_rating, pred_rating
 
 
-# if __name__ == '__main__':
-#     dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32)]
-#     dataset = pd.read_csv("dataset1/ratings.csv", usecols=range(3), dtype=dict(dtype))
-#
-#     lfm = LFM(0.02, 0.01, 0.01, 10, 100, ["userId", "webId", "rating"])
-#     lfm.fit(dataset)
-#
-#     while True:
-#         uid = input("uid: ")
-#         iid = input("iid: ")
-#         print(lfm.predict(int(uid), int(iid)))
-
 if __name__ == '__main__':
-    trainset, testset = data_split("dataset1/ratings.csv", random=True)
+    training = "dataset1/training.csv"
+    testing = "dataset1/testing.csv"
+    validation = "dataset1/validation.csv"
 
+    # load data
+    dtype = [("userId", np.int32), ("movieId", np.int32), ("rating", np.float32)]
+    trainset = pd.read_csv(training, usecols=range(3), dtype=dict(dtype))
+    testset = pd.read_csv(testing, usecols=range(3), dtype=dict(dtype))
+    validset = pd.read_csv(validation, usecols=range(3), dtype=dict(dtype))
+
+    # training process
     lfm = LFM(0.02, 0.01, 0.01, 10, 10, ["userId", "webId", "rating"])
-    lfm.fit(trainset)
+    lfm.fit(trainset, validset)
 
+    # testing process
     pred_results = lfm.test(testset)
-
     rmse, mae = accuray(pred_results)
 
     print("rmse: ", rmse, "mae: ", mae)

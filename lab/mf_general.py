@@ -62,6 +62,14 @@ def accuray(predict_results, method="all"):
     else:
         return rmse_mae(predict_results)
 
+def curve(costs):
+    n = len(costs)
+    x = range(n)
+    plt.plot(x, costs, color='r', linewidth=3)
+    plt.title("Convergence curve")
+    plt.xlabel("generation")
+    plt.ylabel("loss")
+    plt.show()
 
 # 评分预测    1-5
 class LFM(object):
@@ -84,16 +92,7 @@ class LFM(object):
 
         self.globalMean = self.dataset[self.columns[2]].mean()
 
-        self.P, self.Q, results= self.train()
-
-        n = len(results)
-        x = range(n)
-        plt.plot(x, results, color='r', linewidth=3)
-        plt.title("Convergence curve")
-        plt.xlabel("generation")
-        plt.ylabel("loss")
-        plt.show()
-
+        self.P, self.Q = self.train()
 
     def train(self):
         """
@@ -105,14 +104,14 @@ class LFM(object):
         # 快速停止策略，如果valid 连续5次增加
         vr_min = 10
         vr_last = 0
-        results = []
+        costs = []
         P, Q = self._init_matrix()
         for i in range(self.number_epochs):
             print("==========  epoch %d ==========" % i)
             P, Q = self.sgd(P, Q)
             cost = self.cost(P, Q)
             print("Training cost: ", cost)
-            results.append(cost)
+            costs.append(cost)
             if cost < 0.01:
                 break
 
@@ -128,7 +127,8 @@ class LFM(object):
             else:
                 break
 
-        return P, Q, results
+        curve(costs)
+        return P, Q
 
 
     def _init_matrix(self):

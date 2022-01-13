@@ -55,7 +55,7 @@ class BaselineCFBySGD(object):
             if rmse < vr_min:
                 vr_min = rmse
                 vr_last = 0
-            elif vr_last < 5:
+            elif vr_last < 4:
                 vr_last += 1
             else:
                 break
@@ -97,9 +97,11 @@ class BaselineCFBySGD(object):
         cost = 0
         for uid, iid, real_rating in self.trainset.itertuples(index=False):
             cost += pow(real_rating - (self.global_mean + bu[uid] + bi[iid]), 2)
-            cost += self.reg * (pow(bu[uid], 2) * pow(bi[iid], 2))
 
-        return cost / 2
+        cost += self.reg * np.linalg.norm(bu)
+        cost += self.reg * np.linalg.norm(bi)
+
+        return cost
 
 
     def valid(self, bu, bi):
@@ -111,34 +113,33 @@ class BaselineCFBySGD(object):
         """
         for uid, iid, real_rating in self.validset.itertuples(index=False):
             try:
-                pred_rating = self.global_mean + bu[uid] + bi[iid]
+                if uid not in self.users_ratings.index or iid not in self.items_ratings.index:
+                    pred_rating = self.global_mean
+                else:
+                    pred_rating = self.global_mean + bu[uid] + bi[iid]
             except Exception as e:
                 print(e)
             else:
                 yield uid, iid, real_rating, pred_rating
 
-    def predict(self, uid, iid):
-        '''评分预测'''
-        if iid not in self.items_ratings.index:
-            raise Exception("无法预测用户<{uid}>对电影<{iid}>的评分，因为训练集中缺失<{iid}>的数据".format(uid=uid, iid=iid))
-
-        predict_rating = self.global_mean + self.bu[uid] + self.bi[iid]
-        return predict_rating
 
     def test(self,testset):
         '''预测测试集数据'''
         for uid, iid, real_rating in testset.itertuples(index=False):
             try:
-                pred_rating = self.predict(uid, iid)
+                if uid not in self.users_ratings.index or iid not in self.items_ratings.index:
+                    pred_rating = self.global_mean
+                else:
+                    pred_rating = self.global_mean + self.bu[uid] + self.bi[iid]
             except Exception as e:
                 print(e)
             else:
                 yield uid, iid, real_rating, pred_rating
 
 if __name__ == '__main__':
-    training = "../dataset2/training.csv"
-    testing = "../dataset2/testing.csv"
-    validation = "../dataset2/validation.csv"
+    training = "../dataset1/training.csv"
+    testing = "../dataset1/testing.csv"
+    validation = "../dataset1/validation.csv"
 
     # load data
     dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32)]
@@ -147,7 +148,7 @@ if __name__ == '__main__':
     validset = pd.read_csv(validation, usecols=range(3), dtype=dict(dtype))
 
     # training process
-    bcf = BaselineCFBySGD(20, 0.1, 0.1, ["userId", "webId", "rating"])
+    bcf = BaselineCFBySGD(100, 0.1, 0.1, ["userId", "webId", "rating"])
     bcf.fit(trainset, validset)
 
     # testing process

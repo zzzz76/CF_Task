@@ -1,6 +1,9 @@
-'''
+"""
 LFM Model
-'''
+
+@author zzzz76
+"""
+
 import pandas as pd
 import numpy as np
 from lab.utils import accuray, curve
@@ -114,10 +117,13 @@ class LFM(object):
             v_i = W[iid]  # 物品向量
             cost += pow(r_ui - np.dot(v_u, v_i), 2)
 
-            for k in range(self.number_LatentFactors):
-                cost += self.reg_u * pow(v_u[k], 2) + self.reg_w * pow(v_i[k], 2)
+        for uid in self.users_ratings.index:
+            cost += self.reg_w * np.linalg.norm(U[uid])
 
-        return cost / 2
+        for iid in self.items_ratings.index:
+            cost += self.reg_u * np.linalg.norm(W[iid])
+
+        return cost
 
     def valid(self, U, W):
         """
@@ -176,7 +182,7 @@ if __name__ == '__main__':
     validset = pd.read_csv(validation, usecols=range(3), dtype=dict(dtype))
 
     # training process
-    lfm = LFM(0.02, 0.01, 0.01, 10, 300, ["userId", "webId", "rating"])
+    lfm = LFM(0.02, 0.01, 0.01, 10, 50, ["userId", "webId", "rating"])
     lfm.fit(trainset, validset)
 
     # testing process

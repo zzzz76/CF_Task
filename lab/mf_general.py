@@ -8,6 +8,12 @@ import pandas as pd
 import numpy as np
 from lab.utils import accuray, curve
 
+from warnings import simplefilter
+simplefilter('error')
+
+from numpy import seterr
+seterr(all='raise')
+
 # 评分预测    1-5
 class LFM(object):
 
@@ -91,17 +97,27 @@ class LFM(object):
         :return: 经过优化的隐空间矩阵
         """
         for uid, iid, r_ui in self.trainset.itertuples(index=False):
-            # User-LF U
-            ## Item-LF W
-            v_u = U[uid]  # 用户向量
-            v_i = W[iid]  # 物品向量
-            err = np.float32(r_ui - np.dot(v_u, v_i))
 
-            v_u += self.alpha * (err * v_i - self.reg_u * v_u)
-            v_i += self.alpha * (err * v_u - self.reg_w * v_i)
+            try:
+                # User-LF U
+                ## Item-LF W
+                v_u = U[uid]  # 用户向量
+                v_i = W[iid]  # 物品向量
+                err = np.float32(r_ui - np.dot(v_u, v_i))
 
-            U[uid] = v_u
-            W[iid] = v_i
+                v_u += self.alpha * (err * v_i - self.reg_u * v_u)
+                v_i += self.alpha * (err * v_u - self.reg_w * v_i)
+
+
+                U[uid] = v_u
+                W[iid] = v_i
+            except:
+                print("+++++++++++++++++++")
+                print(U[uid])
+                print(W[iid])
+                print(np.float32(r_ui - np.dot(U[uid], W[iid])))
+                print("+++++++++++++++++++")
+
         return U, W
 
     def cost(self, U, W):
@@ -134,7 +150,10 @@ class LFM(object):
         """
         for uid, iid, real_rating in self.validset.itertuples(index=False):
             try:
-                pred_rating = np.dot(U[uid], W[iid])
+                if uid not in self.users_ratings.index or iid not in self.items_ratings.index:
+                    pred_rating = self.globalMean
+                else:
+                    pred_rating = np.dot(U[uid], W[iid])
             except Exception as e:
                 print(e)
             else:
@@ -171,9 +190,9 @@ class LFM(object):
 
 
 if __name__ == '__main__':
-    training = "../dataset2/training.csv"
-    testing = "../dataset2/testing.csv"
-    validation = "../dataset2/validation.csv"
+    training = "../dataset1/training.csv"
+    testing = "../dataset1/testing.csv"
+    validation = "../dataset1/validation.csv"
 
     # load data
     dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32)]
@@ -182,7 +201,7 @@ if __name__ == '__main__':
     validset = pd.read_csv(validation, usecols=range(3), dtype=dict(dtype))
 
     # training process
-    lfm = LFM(0.02, 0.01, 0.01, 10, 50, ["userId", "webId", "rating"])
+    lfm = LFM(0.01, 0.01, 0.01, 30, 300, ["userId", "webId", "rating"])
     lfm.fit(trainset, validset)
 
     # testing process

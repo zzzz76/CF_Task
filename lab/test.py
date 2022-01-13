@@ -1,7 +1,20 @@
+
+
 import numpy as np
 
-x = [0, 4, 3]
 
-y = np.linalg.norm(x)
+from warnings import simplefilter
+simplefilter('error')
 
-print(y)
+from numpy import seterr
+seterr(all='raise')
+
+try:
+    np.array([1]) / 0
+except:
+    print("ok")
+
+a = 1.83164086e+10
+
+
+print(a)

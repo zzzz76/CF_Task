@@ -26,9 +26,9 @@ class LFM(object):
         self.number_epochs = number_epochs  # 最大迭代次数
         self.columns = columns
 
-    def fit(self, trainset, validset):
+    def fit(self, trainset, testset):
         self.trainset = pd.DataFrame(trainset)
-        self.validset = pd.DataFrame(validset)
+        self.testset = pd.DataFrame(testset)
 
         self.users_ratings = trainset.groupby(self.columns[0]).agg([list])[[self.columns[1], self.columns[2]]]
         self.items_ratings = trainset.groupby(self.columns[1]).agg([list])[[self.columns[0], self.columns[2]]]
@@ -42,29 +42,35 @@ class LFM(object):
         训练模型
         :return: 隐空间矩阵
         """
-
-        # valid 用来防止 过拟合 以及 超参数的调节
-        # 快速停止策略，如果valid 连续5次增加
-        vr_min = 10
-        vr_last = 0
+        beta = 0.005
+        decay_rate = 0.9
+        decay_steps = 5
+        # test 用来防止 过拟合 以及 超参数的调节
+        # 快速停止策略，如果test 连续5次增加
+        tr_min = 10
+        tr_last = 0
         costs = []
         U, W = self._init_matrix() # 模型初始化
         for i in range(self.number_epochs):
+
+            # decayed_beta = beta * decay_rate ** (i / decay_steps) + 0.005
+
+            # print(decayed_beta)
             print("==========  epoch %d ==========" % i)
-            U, W = self.sgd(U, W) # 每一轮更新 都要 计算 cost
+            U, W = self.sgd(U, W, 0.01) # 每一轮更新 都要 计算 cost
             cost = self.cost(U, W)
             print("Training cost: ", cost)
             costs.append(cost)
 
-            valid_results = self.valid(U, W)
-            rmse = accuray(valid_results, method="rmse")
-            print("Validation rmse: ", rmse)
+            test_results = self.test(U, W)
+            rmse, mae = accuray(test_results, method="all")
+            print("Testing rmse: ", rmse, "mae: ", mae)
 
-            if rmse < vr_min:
-                vr_min = rmse
-                vr_last = 0
-            elif vr_last < 4:
-                vr_last += 1
+            if rmse < tr_min:
+                tr_min = rmse
+                tr_last = 0
+            elif tr_last < 4:
+                tr_last += 1
             else:
                 break
 
@@ -89,7 +95,7 @@ class LFM(object):
         ))
         return U, W
 
-    def sgd(self, U, W):
+    def sgd(self, U, W, decay):
         """
         使用随机梯度下降，优化模型
         :param U: 用户隐空间矩阵
@@ -105,8 +111,8 @@ class LFM(object):
                 v_i = W[iid]  # 物品向量
                 err = np.float32(r_ui - np.dot(v_u, v_i))
 
-                v_u += self.alpha * (err * v_i - self.reg_u * v_u)
-                v_i += self.alpha * (err * v_u - self.reg_w * v_i)
+                v_u += decay * (err * v_i - self.reg_u * v_u)
+                v_i += decay * (err * v_u - self.reg_w * v_i)
 
 
                 U[uid] = v_u
@@ -141,14 +147,15 @@ class LFM(object):
 
         return cost
 
-    def valid(self, U, W):
+
+    def test(self, U, W):
         """
-        验证数据集
+        测试数据集
         :param U: 用户隐空间矩阵
         :param W: 服务隐空间矩阵
-        :return: 逐个返回验证评分
+        :return: 逐个返回测试评分
         """
-        for uid, iid, real_rating in self.validset.itertuples(index=False):
+        for uid, iid, real_rating in self.testset.itertuples(index=False):
             try:
                 if uid not in self.users_ratings.index or iid not in self.items_ratings.index:
                     pred_rating = self.globalMean
@@ -159,53 +166,18 @@ class LFM(object):
             else:
                 yield uid, iid, real_rating, pred_rating
 
-    def predict(self, uid, iid):
-        """
-        评分预测
-        :param uid: 用户id
-        :param iid: 服务id
-        :return: 评分预测值
-        """
-        if uid not in self.users_ratings.index or iid not in self.items_ratings.index:
-            return self.globalMean
-
-        v_u = self.U[uid]
-        v_i = self.W[iid]
-
-        return np.dot(v_u, v_i)
-
-    def test(self, testset):
-        """
-        测试数据集
-        :param testset: 测试集
-        :return: 逐个返回预测评分
-        """
-        for uid, iid, real_rating in testset.itertuples(index=False):
-            try:
-                pred_rating = self.predict(uid, iid)
-            except Exception as e:
-                print(e)
-            else:
-                yield uid, iid, real_rating, pred_rating
-
 
 if __name__ == '__main__':
-    training = "../dataset1/training.csv"
-    testing = "../dataset1/testing.csv"
-    validation = "../dataset1/validation.csv"
+    training = "../dataset1/30/training.csv"
+    testing = "../dataset1/30/testing.csv"
 
     # load data
     dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32)]
     trainset = pd.read_csv(training, usecols=range(3), dtype=dict(dtype))
     testset = pd.read_csv(testing, usecols=range(3), dtype=dict(dtype))
-    validset = pd.read_csv(validation, usecols=range(3), dtype=dict(dtype))
 
     # training process
     lfm = LFM(0.01, 0.01, 0.01, 30, 300, ["userId", "webId", "rating"])
-    lfm.fit(trainset, validset)
+    lfm.fit(trainset, testset)
 
-    # testing process
-    pred_results = lfm.test(testset)
-    rmse, mae = accuray(pred_results)
 
-    print("rmse: ", rmse, "mae: ", mae)

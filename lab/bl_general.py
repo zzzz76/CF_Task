@@ -20,9 +20,9 @@ class BaselineCFBySGD(object):
         # 数据集中user-item-rating字段的名称
         self.columns = columns
 
-    def fit(self, trainset, validset):
+    def fit(self, trainset, testset):
         self.trainset = trainset
-        self.validset = validset
+        self.testset = testset
         # 用户评分数据
         self.users_ratings = trainset.groupby(self.columns[0]).agg([list])[[self.columns[1], self.columns[2]]]
         # 物品评分数据
@@ -37,8 +37,8 @@ class BaselineCFBySGD(object):
         训练模型
         :return:
         """
-        vr_min = 10
-        vr_last = 0
+        tr_min = 10
+        tr_last = 0
         costs = []
         bu, bi = self._init_bias()
         for i in range(self.number_epochs):
@@ -48,15 +48,15 @@ class BaselineCFBySGD(object):
             print("Training cost: ", cost)
             costs.append(cost)
 
-            valid_results = self.valid(bu, bi)
-            rmse = accuray(valid_results, method="rmse")
-            print("Validation rmse: ", rmse)
+            test_results = self.test(bu, bi)
+            rmse, mae = accuray(test_results)
+            print("Testing rmse: ", rmse, "mae: ", mae)
 
-            if rmse < vr_min:
-                vr_min = rmse
-                vr_last = 0
-            elif vr_last < 4:
-                vr_last += 1
+            if rmse < tr_min:
+                tr_min = rmse
+                tr_last = 0
+            elif tr_last < 4:
+                tr_last += 1
             else:
                 break
 
@@ -98,20 +98,23 @@ class BaselineCFBySGD(object):
         for uid, iid, real_rating in self.trainset.itertuples(index=False):
             cost += pow(real_rating - (self.global_mean + bu[uid] + bi[iid]), 2)
 
-        cost += self.reg * np.linalg.norm(bu)
-        cost += self.reg * np.linalg.norm(bi)
+        for uid in self.users_ratings.index:
+            cost += self.reg * bu[uid]
+
+        for iid in self.items_ratings.index:
+            cost += self.reg * bi[iid]
 
         return cost
 
 
-    def valid(self, bu, bi):
+    def test(self, bu, bi):
         """
-        验证数据集
+        测试数据集
         :param bu: 用户偏置向量
         :param bi: 服务偏置向量
-        :return: 返回验证评分
+        :return: 返回测试评分
         """
-        for uid, iid, real_rating in self.validset.itertuples(index=False):
+        for uid, iid, real_rating in self.testset.itertuples(index=False):
             try:
                 if uid not in self.users_ratings.index or iid not in self.items_ratings.index:
                     pred_rating = self.global_mean
@@ -122,37 +125,15 @@ class BaselineCFBySGD(object):
             else:
                 yield uid, iid, real_rating, pred_rating
 
-
-    def test(self,testset):
-        '''预测测试集数据'''
-        for uid, iid, real_rating in testset.itertuples(index=False):
-            try:
-                if uid not in self.users_ratings.index or iid not in self.items_ratings.index:
-                    pred_rating = self.global_mean
-                else:
-                    pred_rating = self.global_mean + self.bu[uid] + self.bi[iid]
-            except Exception as e:
-                print(e)
-            else:
-                yield uid, iid, real_rating, pred_rating
-
 if __name__ == '__main__':
-    training = "../dataset1/training.csv"
-    testing = "../dataset1/testing.csv"
-    validation = "../dataset1/validation.csv"
+    training = "../dataset1/40/training.csv"
+    testing = "../dataset1/40/testing.csv"
 
     # load data
     dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32)]
     trainset = pd.read_csv(training, usecols=range(3), dtype=dict(dtype))
     testset = pd.read_csv(testing, usecols=range(3), dtype=dict(dtype))
-    validset = pd.read_csv(validation, usecols=range(3), dtype=dict(dtype))
 
     # training process
-    bcf = BaselineCFBySGD(100, 0.1, 0.1, ["userId", "webId", "rating"])
-    bcf.fit(trainset, validset)
-
-    # testing process
-    pred_results = bcf.test(testset)
-    rmse, mae = accuray(pred_results)
-
-    print("rmse: ", rmse, "mae: ", mae)
+    bcf = BaselineCFBySGD(100, 0.01, 0.01, ["userId", "webId", "rating"])
+    bcf.fit(trainset, testset)

@@ -126,8 +126,8 @@ class BaselineCFBySGD(object):
                 yield uid, iid, real_rating, pred_rating
 
 if __name__ == '__main__':
-    training = "../dataset1/40/training.csv"
-    testing = "../dataset1/40/testing.csv"
+    training = "../dataset1/10/training.csv"
+    testing = "../dataset1/10/testing.csv"
 
     # load data
     dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32)]

@@ -54,11 +54,28 @@ def get_outlier(R, outlier_frac):
     return I_outlier
 
 
-def transform(R, I_outlier):
+# def transform(R, I_outlier):
+#     """
+#     transform the data format from matrix to array
+#     :param R: data matrix
+#     :param I_outlier: outlier matrix
+#     :return: data array
+#     """
+#     tar_data = []
+#     m, n = R.shape
+#
+#     for i in range(m):
+#         for j in range(n):
+#             if R[i][j] >= 0 and I_outlier[i][j] == 0:
+#                 tar_data.append([i, j, R[i][j]])
+#
+#     tar_data = pd.DataFrame(tar_data, columns=['userId', 'webId', 'rating'])
+#     return tar_data
+
+def transform(R):
     """
     transform the data format from matrix to array
     :param R: data matrix
-    :param I_outlier: outlier matrix
     :return: data array
     """
     tar_data = []
@@ -66,19 +83,20 @@ def transform(R, I_outlier):
 
     for i in range(m):
         for j in range(n):
-            if R[i][j] >= 0 and I_outlier[i][j] == 0:
+            if R[i][j] >= 0:
                 tar_data.append([i, j, R[i][j]])
 
     tar_data = pd.DataFrame(tar_data, columns=['userId', 'webId', 'rating'])
     return tar_data
 
 if __name__ == '__main__':
-    data_path = "../dataset2/rtMatrix.txt"
-    tar_file = "../dataset2/ratings.csv"
-    outlier_frac = float(0.2)
+    data_path = "../dataset1/rtMatrix.txt"
+    tar_file = "../dataset1/ratings.csv"
+    outlier_frac = float(0.01)
     print("=========== preprocess start =============")
     R = load_data(data_path)
-    I_outlier = get_outlier(R, outlier_frac)
-    tar_data = transform(R, I_outlier)
+    # I_outlier = get_outlier(R, outlier_frac)
+    # tar_data = transform(R, I_outlier)
+    tar_data = transform(R)
     tar_data.to_csv(tar_file, index=False)
     print("=========== preprocess end =============")

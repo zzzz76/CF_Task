@@ -126,14 +126,20 @@ class BaselineCFBySGD(object):
                 yield uid, iid, real_rating, pred_rating
 
 if __name__ == '__main__':
-    training = "../dataset1/10/training.csv"
-    testing = "../dataset1/10/testing.csv"
 
-    # load data
-    dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32)]
-    trainset = pd.read_csv(training, usecols=range(3), dtype=dict(dtype))
-    testset = pd.read_csv(testing, usecols=range(3), dtype=dict(dtype))
+    for i in range(1, 6):
+        print("----- Training Density %d/10 -----" % i)
+        training = "../dataset1/" + str(i) + "0/training.csv"
+        testing = "../dataset1/"+ str(i) +"0/testing.csv"
 
-    # training process
-    bcf = BaselineCFBySGD(100, 0.01, 0.01, ["userId", "webId", "rating"])
-    bcf.fit(trainset, testset)
+        print("load trainset: " + training)
+        print("load testset:" + testing)
+
+        # load data
+        dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32)]
+        trainset = pd.read_csv(training, usecols=range(3), dtype=dict(dtype))
+        testset = pd.read_csv(testing, usecols=range(3), dtype=dict(dtype))
+
+        # training process
+        bcf = BaselineCFBySGD(300, 0.003, 0.001, ["userId", "webId", "rating"])
+        bcf.fit(trainset, testset)

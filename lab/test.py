@@ -80,7 +80,9 @@ n=3     #将列表每3个组成一个小列表，
 # y = round(19/10)
 # print(y)
 
-x = 10
-for i in range(1, x):
-    training = "../dataset1/" + str(x - i) + "/training.csv"
-    print(training)
+# x = 10
+# for i in range(1, x):
+#     training = "../dataset1/" + str(x - i) + "/training.csv"
+#     print(training)
+
+

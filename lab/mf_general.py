@@ -57,7 +57,7 @@ class LFM(object):
 
             # print(decayed_beta)
             print("==========  epoch %d ==========" % i)
-            U, W = self.sgd(U, W, 0.01) # 每一轮更新 都要 计算 cost
+            U, W = self.sgd(U, W, self.alpha) # 每一轮更新 都要 计算 cost
             cost = self.cost(U, W)
             print("Training cost: ", cost)
             costs.append(cost)
@@ -86,12 +86,12 @@ class LFM(object):
         # User-LF
         U = dict(zip(
             self.users_ratings.index,
-            np.random.rand(len(self.users_ratings), self.number_LatentFactors).astype(np.float32)
+            np.random.rand(len(self.users_ratings), self.number_LatentFactors).astype(np.float64)
         ))
         # Item-LF
         W = dict(zip(
             self.items_ratings.index,
-            np.random.rand(len(self.items_ratings), self.number_LatentFactors).astype(np.float32)
+            np.random.rand(len(self.items_ratings), self.number_LatentFactors).astype(np.float64)
         ))
         return U, W
 
@@ -168,16 +168,22 @@ class LFM(object):
 
 
 if __name__ == '__main__':
-    training = "../dataset1/30/training.csv"
-    testing = "../dataset1/30/testing.csv"
+    # training = "../dataset1/30/training.csv"
+    # testing = "../dataset1/30/testing.csv"
 
-    # load data
-    dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32)]
-    trainset = pd.read_csv(training, usecols=range(3), dtype=dict(dtype))
-    testset = pd.read_csv(testing, usecols=range(3), dtype=dict(dtype))
+    for i in range(1, 2):
+        print("----- Training Density %d/10 -----" % i)
+        training = "../dataset1/" + str(i) + "0/training.csv"
+        testing = "../dataset1/"+ str(i) +"0/testing.csv"
 
-    # training process
-    lfm = LFM(0.01, 0.01, 0.01, 30, 300, ["userId", "webId", "rating"])
-    lfm.fit(trainset, testset)
+        print("load trainset: " + training)
+        print("load testset:" + testing)
 
+        # load data
+        dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32)]
+        trainset = pd.read_csv(training, usecols=range(3), dtype=dict(dtype))
+        testset = pd.read_csv(testing, usecols=range(3), dtype=dict(dtype))
 
+        # training process
+        lfm = LFM(0.003, 0.001, 0.001, 20, 300, ["userId", "webId", "rating"])
+        lfm.fit(trainset, testset)

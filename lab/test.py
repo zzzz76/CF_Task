@@ -85,4 +85,13 @@ n=3     #将列表每3个组成一个小列表，
 #     training = "../dataset1/" + str(x - i) + "/training.csv"
 #     print(training)
 
+x = [1, 2, 3]
+
+y = [4, 5, 6]
+
+z = [7, 8, 9]
+
+xyz = dict(zip([1,2,4], [x,y,z]))
+
+print(xyz[4])
 

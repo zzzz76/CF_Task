@@ -76,7 +76,7 @@ def transform(R):
     """
     transform the data format from matrix to array
     :param R: data matrix
-    :return: data array
+    :return: data frame
     """
     tar_data = []
     m, n = R.shape

@@ -125,9 +125,33 @@ class BaselineCFBySGD(object):
             else:
                 yield uid, iid, real_rating, pred_rating
 
+    def trans_bu(self):
+        """
+        transform the data format for users bias
+        :return: the data frame
+        """
+        tar_data = []
+        for uid in self.users_ratings.index:
+            tar_data.append([uid, self.bu[uid]])
+
+        tar_data = pd.DataFrame(tar_data, columns=['userId', 'bias'])
+        return tar_data
+
+    def trans_bi(self):
+        """
+        transform the data format for items bias
+        :return: the data frame
+        """
+        tar_data = []
+        for iid in self.items_ratings.index:
+            tar_data.append([iid, self.bi[iid]])
+
+        tar_data = pd.DataFrame(tar_data, columns=['webId', 'bias'])
+        return tar_data
+
 if __name__ == '__main__':
 
-    for i in range(1, 6):
+    for i in range(9, 10):
         print("----- Training Density %d/10 -----" % i)
         training = "../dataset1/" + str(i) + "0/training.csv"
         testing = "../dataset1/"+ str(i) +"0/testing.csv"
@@ -141,5 +165,5 @@ if __name__ == '__main__':
         testset = pd.read_csv(testing, usecols=range(3), dtype=dict(dtype))
 
         # training process
-        bcf = BaselineCFBySGD(300, 0.003, 0.001, ["userId", "webId", "rating"])
+        bcf = BaselineCFBySGD(300, 0.02, 0.001, ["userId", "webId", "rating"])
         bcf.fit(trainset, testset)

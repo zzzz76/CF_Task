@@ -6,6 +6,7 @@ LFM Model
 
 import pandas as pd
 import numpy as np
+from lab.bl_general import BaselineCFBySGD
 from lab.utils import accuray, curve
 
 from warnings import simplefilter
@@ -15,7 +16,7 @@ from numpy import seterr
 seterr(all='raise')
 
 # 评分预测    1-5
-class LFM(object):
+class BLFM(object):
 
     def __init__(self, alpha, reg_u, reg_w, number_LatentFactors=10, number_epochs=10,
                  columns=["uid", "iid", "rating"]):
@@ -26,7 +27,8 @@ class LFM(object):
         self.number_epochs = number_epochs  # 最大迭代次数
         self.columns = columns
 
-    def fit(self, trainset, testset):
+    def fit(self,bcf, trainset, testset):
+        self.bcf = bcf # 基准预测模型
         self.trainset = pd.DataFrame(trainset)
         self.testset = pd.DataFrame(testset)
 
@@ -42,9 +44,6 @@ class LFM(object):
         训练模型
         :return: 隐空间矩阵
         """
-        beta = 0.005
-        decay_rate = 0.9
-        decay_steps = 5
         # test 用来防止 过拟合 以及 超参数的调节
         # 快速停止策略，如果test 连续5次增加
         tr_min = 10
@@ -52,12 +51,8 @@ class LFM(object):
         costs = []
         U, W = self._init_matrix() # 模型初始化
         for i in range(self.number_epochs):
-
-            # decayed_beta = beta * decay_rate ** (i / decay_steps) + 0.005
-
-            # print(decayed_beta)
             print("==========  epoch %d ==========" % i)
-            U, W = self.sgd(U, W, self.alpha) # 每一轮更新 都要 计算 cost
+            U, W = self.sgd(U, W) # 每一轮更新 都要 计算 cost
             cost = self.cost(U, W)
             print("Training cost: ", cost)
             costs.append(cost)
@@ -95,7 +90,7 @@ class LFM(object):
         ))
         return U, W
 
-    def sgd(self, U, W, decay):
+    def sgd(self, U, W):
         """
         使用随机梯度下降，优化模型
         :param U: 用户隐空间矩阵
@@ -109,11 +104,11 @@ class LFM(object):
                 ## Item-LF W
                 v_u = U[uid]  # 用户向量
                 v_i = W[iid]  # 物品向量
-                err = np.float32(r_ui - np.dot(v_u, v_i))
+                # err 的计算需要修改
+                err = np.float32(r_ui - np.dot(v_u, v_i) - self.bcf.predict(uid, iid))
 
-                v_u += decay * (err * v_i - self.reg_u * v_u)
-                v_i += decay * (err * v_u - self.reg_w * v_i)
-
+                v_u += self.alpha * (err * v_i - self.reg_u * v_u)
+                v_i += self.alpha * (err * v_u - self.reg_w * v_i)
 
                 U[uid] = v_u
                 W[iid] = v_i
@@ -121,7 +116,7 @@ class LFM(object):
                 print("+++++++++++++++++++")
                 print(U[uid])
                 print(W[iid])
-                print(np.float32(r_ui - np.dot(U[uid], W[iid])))
+                print(np.float32(r_ui - np.dot(U[uid], W[iid]) - self.bcf.predict(uid, iid)))
                 print("+++++++++++++++++++")
 
         return U, W
@@ -137,7 +132,7 @@ class LFM(object):
         for uid, iid, r_ui in self.trainset.itertuples(index=False):
             v_u = U[uid]  # 用户向量
             v_i = W[iid]  # 物品向量
-            cost += pow(r_ui - np.dot(v_u, v_i), 2)
+            cost += pow(r_ui - np.dot(v_u, v_i) - self.bcf.predict(uid, iid), 2)
 
         for uid in self.users_ratings.index:
             cost += self.reg_w * np.linalg.norm(U[uid])
@@ -160,7 +155,7 @@ class LFM(object):
                 if uid not in self.users_ratings.index or iid not in self.items_ratings.index:
                     pred_rating = self.globalMean
                 else:
-                    pred_rating = np.dot(U[uid], W[iid])
+                    pred_rating = np.dot(U[uid], W[iid]) + self.bcf.predict(uid, iid)
             except Exception as e:
                 print(e)
             else:
@@ -168,10 +163,8 @@ class LFM(object):
 
 
 if __name__ == '__main__':
-    # training = "../dataset1/30/training.csv"
-    # testing = "../dataset1/30/testing.csv"
 
-    for i in range(1, 2):
+    for i in range(4, 10):
         print("----- Training Density %d/10 -----" % i)
         training = "../dataset1/" + str(i) + "0/training.csv"
         testing = "../dataset1/"+ str(i) +"0/testing.csv"
@@ -184,6 +177,10 @@ if __name__ == '__main__':
         trainset = pd.read_csv(training, usecols=range(3), dtype=dict(dtype))
         testset = pd.read_csv(testing, usecols=range(3), dtype=dict(dtype))
 
-        # training process
-        lfm = LFM(0.003, 0.001, 0.001, 20, 300, ["userId", "webId", "rating"])
-        lfm.fit(trainset, testset)
+        # baseline training
+        bcf = BaselineCFBySGD(300, 0.02, 0.001, ["userId", "webId", "rating"])
+        bcf.fit(trainset, testset)
+
+        # mf training
+        blfm = BLFM(0.003, 0.001, 0.001, 20, 300,["userId", "webId", "rating"])
+        blfm.fit(bcf, trainset, testset)

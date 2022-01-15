@@ -125,6 +125,22 @@ class BaselineCFBySGD(object):
             else:
                 yield uid, iid, real_rating, pred_rating
 
+
+    def predict(self, uid, iid):
+        """
+        进行评分预测
+        :param uid: 用户编号
+        :param iid: 服务编号
+        :return: 评分预测值
+        """
+        if uid not in self.users_ratings.index or iid not in self.items_ratings.index:
+            pred_rating = self.global_mean
+        else:
+            pred_rating = self.global_mean + self.bu[uid] + self.bi[iid]
+
+        return pred_rating
+
+
     def trans_bu(self):
         """
         transform the data format for users bias
@@ -167,3 +183,7 @@ if __name__ == '__main__':
         # training process
         bcf = BaselineCFBySGD(300, 0.02, 0.001, ["userId", "webId", "rating"])
         bcf.fit(trainset, testset)
+
+        # save bias
+        # bcf.trans_bu().to_csv("../dataset1/userbias.csv", index=False)
+        # bcf.trans_bi().to_csv("../dataset1/webbias.csv", index=False)

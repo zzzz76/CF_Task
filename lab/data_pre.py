@@ -1,46 +1,110 @@
-import numpy as np
-import pandas as pd
+"""
+Used to preprocess the raw data
 
-def load_data(data_path, key, value):
+@author zzzz76
+"""
+import pandas as pd
+import numpy as np
+from sklearn.ensemble import IsolationForest
+
+def load_matrix(data_path):
+    """
+    load data matrix from data file
+    :param data_path: data file
+    :return: the data matrix
+    """
+    R = []
+    with open(data_path) as df:
+        for line in df:
+            R.append(list(map(float, line.split())))
+        R = np.array(R)
+    return R
+
+
+def load_map(data_path, key, value):
     """
     load data map from data file
     :param data_path: data file
     :param key: column of key
     :param value: column of value
-    :return: data map
+    :return: the data map
     """
-    id_list = []
-    reg_list = []
+    keys = []
+    values = []
     with open(data_path) as df:
         for line in df.readlines()[2:]:
-            id_list.append(int(line.split('\t')[key]))
-            reg_list.append(line.split('\t')[value])
+            keys.append(int(line.split('\t')[key]))
+            values.append(line.split('\t')[value])
 
-        map = dict(zip(id_list, reg_list))
+        map = dict(zip(keys, values))
     return map
 
+
+def preprocess(ur_map, wr_map, R):
+    """
+    preprocess the raw data
+    :param ur_map: user-region map
+    :param wr_map: web-region map
+    :param R: user-web matrix
+    :return: the target data
+    """
+    tar_data = []
+    m, n = R.shape
+
+    for i in range(m):
+        for j in range(n):
+            if R[i][j] >= 0 and j != 4700 and j != 4701:
+                tar_data.append([i, j, R[i][j], ur_map[i], wr_map[j]])
+
+    tar_data = pd.DataFrame(tar_data, columns=['userId', 'webId', 'rating', 'userRg', 'webRg'])
+    return tar_data
+
+def get_outlier(R, outlier_frac):
+    """
+    get the outlier matrix
+    :param R: data matrix
+    :param outlier_frac: outlier fraction
+    :return: outlier matrix
+    """
+    m,n = R.shape
+    I_outlier = np.zeros([m,n])
+    rng = np.random.RandomState(42)
+    x = []
+    x_ind = []
+    for i in range(m):
+        for j in range(n):
+            if R[i][j] >=0:
+                x.append(R[i][j])
+                x_ind.append(i*n+j)
+
+    x = np.array(x)
+    x = x.reshape(-1,1)
+
+    clf = IsolationForest(max_samples= len(x), random_state=rng, contamination=outlier_frac)
+    clf.fit(x)
+    y_pred_train = clf.predict(x)
+    for i in range(len(y_pred_train)):
+        if y_pred_train[i] == -1:
+            row = int(x_ind[i] / n)
+            col = int(x_ind[i] % n)
+            I_outlier[row][col] = 1
+
+    return I_outlier
+
+
 if __name__ == '__main__':
-    # 加载 用户-区域字典 服务-区域字典
-    user_path = "../dataset2/userlist.txt"
-    web_path = "../dataset2/wslist.txt"
+    user_path = "../dataset1/userlist.txt"
+    web_path = "../dataset1/wslist.txt"
+    data_path = "../dataset1/rtMatrix.txt"
+    tar_file = "../dataset1/ratings.csv"
 
-    ur_map = load_data(user_path, 0, 2)
-    wr_map = load_data(web_path, 0, 4)
+    # load user-region dict and web-region dict
+    ur_map = load_map(user_path, 0, 2)
+    wr_map = load_map(web_path, 0, 4)
+    # load user-web matrix
+    R = load_matrix(data_path)
 
-    # 加载 用户-服务 评分表
-    training = "../dataset2/training.csv"
-    dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32)]
-    trainset = pd.read_csv(training, usecols=range(3), dtype=dict(dtype))
-
-    # 按行遍历 评分表
-    reg_table = []
-    for uid, iid, real_rating in trainset.itertuples(index=False):
-        reg_table.append([ur_map[uid], wr_map[iid], real_rating])
-    reg_table = pd.DataFrame(reg_table, columns=['userReg', 'webReg', 'rating'])
-
-    # 构建 地域 评分记录
-    reg_table = reg_table['rating'].groupby([reg_table['userReg'], reg_table['webReg']])
-    means = reg_table.mean()
-    reg_data = means.unstack()
-
-    print("ok")
+    print("=========== preprocess start =============")
+    tar_data = preprocess(ur_map, wr_map, R)
+    tar_data.to_csv(tar_file, index=False)
+    print("=========== preprocess end =============")

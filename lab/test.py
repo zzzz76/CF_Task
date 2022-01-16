@@ -1,6 +1,8 @@
 
 
 import numpy as np
+import pandas as pd
+import lab.utils as utils
 
 
 from warnings import simplefilter
@@ -85,13 +87,36 @@ n=3     #将列表每3个组成一个小列表，
 #     training = "../dataset1/" + str(x - i) + "/training.csv"
 #     print(training)
 
-x = [1, 2, 3]
+# x = [1, 2, 3]
+#
+# y = [4, 5, 6]
+#
+# z = [7, 8, 9]
+#
+# xyz = dict(zip([1,2,4], [x,y,z]))
+#
+# print(xyz[4])
 
-y = [4, 5, 6]
 
-z = [7, 8, 9]
+list_data = [5,3,2]
+list_index = [('United states', 'Japan'), ('United states', 'United states'), ('Japan', 'Japan')]
 
-xyz = dict(zip([1,2,4], [x,y,z]))
+data = pd.Series(list_data, index= list_index)
 
-print(xyz[4])
+print(data.index)
+print(data)
+print(('United states', 'Japan') in data)
+
+# user_path = "../dataset1/userlist.txt"
+# web_path = "../dataset1/wslist.txt"
+# ur_map = utils.load_map(user_path, 0, 2)
+# wr_map = utils.load_map(web_path, 0, 4)
+#
+#
+# print(4702 in ur_map.keys())
+# print(4702 in wr_map.keys())
+#
+#
+# print(4702 in ur_map)
+# print(4702 in wr_map)
 

@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 from lab.utils import accuray, curve
 
-class BLGeneral(object):
+class BLRegion(object):
 
     def __init__(self, number_epochs, alpha, reg, columns=["uid", "iid", "rating"]):
         # 梯度下降最高迭代次数
@@ -181,9 +181,9 @@ if __name__ == '__main__':
         testset = pd.read_csv(testing, usecols=range(3), dtype=dict(dtype))
 
         # training process
-        blg = BLGeneral(300, 0.02, 0.001, ["userId", "webId", "rating"])
-        blg.fit(trainset, testset)
+        blr = BLRegion(300, 0.02, 0.001, ["userId", "webId", "rating"])
+        blr.fit(trainset, testset)
 
         # save bias
-        # blg.trans_bu().to_csv("../dataset1/userbias.csv", index=False)
-        # blg.trans_bi().to_csv("../dataset1/webbias.csv", index=False)
+        # blr.trans_bu().to_csv("../dataset1/userbias.csv", index=False)
+        # blr.trans_bi().to_csv("../dataset1/webbias.csv", index=False)

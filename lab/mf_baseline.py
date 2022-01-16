@@ -6,7 +6,7 @@ LFM Model
 
 import pandas as pd
 import numpy as np
-from lab.bl_general import BaselineCFBySGD
+from lab.bl_general import BLGeneral
 from lab.utils import accuray, curve
 
 from warnings import simplefilter
@@ -16,7 +16,7 @@ from numpy import seterr
 seterr(all='raise')
 
 # 评分预测    1-5
-class BLFM(object):
+class MFBaseline(object):
 
     def __init__(self, alpha, reg_u, reg_w, number_LatentFactors=10, number_epochs=10,
                  columns=["uid", "iid", "rating"]):
@@ -164,7 +164,7 @@ class BLFM(object):
 
 if __name__ == '__main__':
 
-    for i in range(4, 10):
+    for i in range(2, 3):
         print("----- Training Density %d/10 -----" % i)
         training = "../dataset1/" + str(i) + "0/training.csv"
         testing = "../dataset1/"+ str(i) +"0/testing.csv"
@@ -178,9 +178,9 @@ if __name__ == '__main__':
         testset = pd.read_csv(testing, usecols=range(3), dtype=dict(dtype))
 
         # baseline training
-        bcf = BaselineCFBySGD(300, 0.02, 0.001, ["userId", "webId", "rating"])
+        bcf = BLGeneral(300, 0.02, 0.001, ["userId", "webId", "rating"])
         bcf.fit(trainset, testset)
 
         # mf training
-        blfm = BLFM(0.003, 0.001, 0.001, 20, 300,["userId", "webId", "rating"])
-        blfm.fit(bcf, trainset, testset)
+        mfb = MFBaseline(0.003, 0.001, 0.001, 20, 300,["userId", "webId", "rating"])
+        mfb.fit(bcf, trainset, testset)

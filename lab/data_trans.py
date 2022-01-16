@@ -90,8 +90,8 @@ def transform(R):
     return tar_data
 
 if __name__ == '__main__':
-    data_path = "../dataset1/rtMatrix.txt"
-    tar_file = "../dataset1/ratings.csv"
+    data_path = "../dataset2/rtMatrix.txt"
+    tar_file = "../dataset2/ratings.csv"
     outlier_frac = float(0.01)
     print("=========== preprocess start =============")
     R = load_data(data_path)

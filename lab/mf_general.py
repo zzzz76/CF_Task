@@ -15,7 +15,7 @@ from numpy import seterr
 seterr(all='raise')
 
 # 评分预测    1-5
-class LFM(object):
+class MFGeneral(object):
 
     def __init__(self, alpha, reg_u, reg_w, number_LatentFactors=10, number_epochs=10,
                  columns=["uid", "iid", "rating"]):
@@ -185,5 +185,5 @@ if __name__ == '__main__':
         testset = pd.read_csv(testing, usecols=range(3), dtype=dict(dtype))
 
         # training process
-        lfm = LFM(0.003, 0.001, 0.001, 20, 300, ["userId", "webId", "rating"])
-        lfm.fit(trainset, testset)
+        mfg = MFGeneral(0.003, 0.001, 0.001, 20, 300, ["userId", "webId", "rating"])
+        mfg.fit(trainset, testset)

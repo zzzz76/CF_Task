@@ -10,7 +10,7 @@ from lab.utils import accuray, curve
 
 class BLRegion(object):
 
-    def __init__(self, number_epochs, alpha, reg, columns=["uid", "iid", "rating"]):
+    def __init__(self, number_epochs, alpha, reg, columns=["uid", "iid", "rating", "mean"]):
         # 梯度下降最高迭代次数
         self.number_epochs = number_epochs
         # 学习率
@@ -27,8 +27,6 @@ class BLRegion(object):
         self.users_ratings = trainset.groupby(self.columns[0]).agg([list])[[self.columns[1], self.columns[2]]]
         # 物品评分数据
         self.items_ratings = trainset.groupby(self.columns[1]).agg([list])[[self.columns[0], self.columns[2]]]
-        # 计算全局平均分
-        self.global_mean = self.trainset[self.columns[2]].mean()
         # 调用sgd方法训练模型参数
         self.bu, self.bi = self.train()
 
@@ -79,8 +77,8 @@ class BLRegion(object):
         :param bi: 服务偏置向量
         :return: 经过优化的偏置向量
         """
-        for uid, iid, real_rating in self.trainset.itertuples(index=False):
-            error = real_rating - (self.global_mean + bu[uid] + bi[iid])
+        for uid, iid, real_rating, mean in self.trainset.itertuples(index=False):
+            error = real_rating - (mean + bu[uid] + bi[iid])
 
             bu[uid] += self.alpha * (error - self.reg * bu[uid])
             bi[iid] += self.alpha * (error - self.reg * bi[iid])
@@ -95,8 +93,8 @@ class BLRegion(object):
         :return: 模型损失值
         """
         cost = 0
-        for uid, iid, real_rating in self.trainset.itertuples(index=False):
-            cost += pow(real_rating - (self.global_mean + bu[uid] + bi[iid]), 2)
+        for uid, iid, real_rating, mean in self.trainset.itertuples(index=False):
+            cost += pow(real_rating - (mean + bu[uid] + bi[iid]), 2)
 
         for uid in self.users_ratings.index:
             cost += self.reg * bu[uid]
@@ -114,60 +112,36 @@ class BLRegion(object):
         :param bi: 服务偏置向量
         :return: 返回测试评分
         """
-        for uid, iid, real_rating in self.testset.itertuples(index=False):
+        for uid, iid, real_rating, mean in self.testset.itertuples(index=False):
             try:
                 if uid not in self.users_ratings.index or iid not in self.items_ratings.index:
-                    pred_rating = self.global_mean
+                    pred_rating = mean
                 else:
-                    pred_rating = self.global_mean + bu[uid] + bi[iid]
+                    pred_rating = mean + bu[uid] + bi[iid]
             except Exception as e:
                 print(e)
             else:
                 yield uid, iid, real_rating, pred_rating
 
 
-    def predict(self, uid, iid):
-        """
-        进行评分预测
-        :param uid: 用户编号
-        :param iid: 服务编号
-        :return: 评分预测值
-        """
-        if uid not in self.users_ratings.index or iid not in self.items_ratings.index:
-            pred_rating = self.global_mean
-        else:
-            pred_rating = self.global_mean + self.bu[uid] + self.bi[iid]
+    # def predict(self, uid, iid):
+    #     """
+    #     进行评分预测
+    #     :param uid: 用户编号
+    #     :param iid: 服务编号
+    #     :return: 评分预测值
+    #     """
+    #     if uid not in self.users_ratings.index or iid not in self.items_ratings.index:
+    #         pred_rating = self.global_mean
+    #     else:
+    #         pred_rating = self.global_mean + self.bu[uid] + self.bi[iid]
+    #
+    #     return pred_rating
 
-        return pred_rating
-
-
-    def trans_bu(self):
-        """
-        transform the data format for users bias
-        :return: the data frame
-        """
-        tar_data = []
-        for uid in self.users_ratings.index:
-            tar_data.append([uid, self.bu[uid]])
-
-        tar_data = pd.DataFrame(tar_data, columns=['userId', 'bias'])
-        return tar_data
-
-    def trans_bi(self):
-        """
-        transform the data format for items bias
-        :return: the data frame
-        """
-        tar_data = []
-        for iid in self.items_ratings.index:
-            tar_data.append([iid, self.bi[iid]])
-
-        tar_data = pd.DataFrame(tar_data, columns=['webId', 'bias'])
-        return tar_data
 
 if __name__ == '__main__':
 
-    for i in range(6, 10):
+    for i in range(1, 10):
         print("----- Training Density %d/10 -----" % i)
         training = "../dataset1/" + str(i) + "0/training.csv"
         testing = "../dataset1/"+ str(i) +"0/testing.csv"
@@ -176,14 +150,14 @@ if __name__ == '__main__':
         print("load testset:" + testing)
 
         # load data
-        dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32)]
-        trainset = pd.read_csv(training, usecols=range(3), dtype=dict(dtype))
-        testset = pd.read_csv(testing, usecols=range(3), dtype=dict(dtype))
+        dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32), ("mean", np.float32)]
+        trainset = pd.read_csv(training, usecols=[0,1,2,5], dtype=dict(dtype))
+        testset = pd.read_csv(testing, usecols=[0,1,2,5], dtype=dict(dtype))
 
         # training process
-        blr = BLRegion(300, 0.02, 0.001, ["userId", "webId", "rating"])
-        blr.fit(trainset, testset)
+        blg = BLRegion(300, 0.02, 0.001, ["userId", "webId", "rating", "mean"])
+        blg.fit(trainset, testset)
 
         # save bias
-        # blr.trans_bu().to_csv("../dataset1/userbias.csv", index=False)
-        # blr.trans_bi().to_csv("../dataset1/webbias.csv", index=False)
+        # blg.trans_bu().to_csv("../dataset1/userbias.csv", index=False)
+        # blg.trans_bi().to_csv("../dataset1/webbias.csv", index=False)

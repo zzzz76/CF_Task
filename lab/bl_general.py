@@ -167,7 +167,7 @@ class BLGeneral(object):
 
 if __name__ == '__main__':
 
-    for i in range(6, 10):
+    for i in range(1, 10):
         print("----- Training Density %d/10 -----" % i)
         training = "../dataset1/" + str(i) + "0/training.csv"
         testing = "../dataset1/"+ str(i) +"0/testing.csv"

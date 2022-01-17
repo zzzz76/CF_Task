@@ -77,8 +77,8 @@ if __name__ == '__main__':
         print("----- partition positon %d/%d -----" % (i, part))
         training = "../dataset1/" + str(part - i) + "0/training.csv"
         testing = "../dataset1/" + str(part - i) + "0/testing.csv"
-        trainset = ratings.loc[trainsets_index[i]]
-        testset = ratings.drop(trainsets_index[i])
+        trainset = ratings.loc[trainsets_index[i]].reset_index(drop=True)
+        testset = ratings.drop(trainsets_index[i]).reset_index(drop=True)
 
         # get the global mean and local means
         global_mean = trainset['rating'].mean()

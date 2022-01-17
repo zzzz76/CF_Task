@@ -1,5 +1,5 @@
 """
-To provide the evaluation utils
+The evaluate utils
 
 @author zzzz76
 """
@@ -63,10 +63,17 @@ def accuray(predict_results, method="all"):
     else:
         return rmse_mae(predict_results)
 
+
 def curve(costs):
+    """
+    show the cost value trend
+    :param costs: cost value list
+    """
     x = range(len(costs))
     plt.plot(x, costs, color='r', linewidth=3)
     plt.title("Convergence curve")
     plt.xlabel("generation")
     plt.ylabel("loss")
     plt.show()
+
+

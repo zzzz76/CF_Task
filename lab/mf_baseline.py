@@ -189,8 +189,8 @@ if __name__ == '__main__':
         dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32)]
         trainset = pd.read_csv(training, usecols=range(3), dtype=dict(dtype))
         testset = pd.read_csv(testing, usecols=range(3), dtype=dict(dtype))
-        bu = np.load(bg_user).item()
-        bi = np.load(bg_web).item()
+        bu = np.load(bg_user, allow_pickle=True).item()
+        bi = np.load(bg_web, allow_pickle=True).item()
 
         # mf training
         mfb = MFBaseline(0.005, 0.02, 0.02, 30, 300,["userId", "webId", "rating"])

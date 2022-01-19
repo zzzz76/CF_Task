@@ -40,7 +40,7 @@ def load_map(data_path, key, value):
     return map
 
 
-def preprocess(ur_map, wr_map, R):
+def preprocess(ur_map, wr_map, R, I_outlier):
     """
     preprocess the raw data
     :param ur_map: user-region map
@@ -53,7 +53,7 @@ def preprocess(ur_map, wr_map, R):
 
     for i in range(m):
         for j in range(n):
-            if R[i][j] >= 0 and j != 4700 and j != 4701:
+            if R[i][j] >= 0 and j != 4700 and j != 4701 and I_outlier[i][j] != 1:
                 tar_data.append([i, j, R[i][j], ur_map[i], wr_map[j]])
 
     tar_data = pd.DataFrame(tar_data, columns=['userId', 'webId', 'rating', 'userRg', 'webRg'])
@@ -103,8 +103,8 @@ if __name__ == '__main__':
     wr_map = load_map(web_path, 0, 4)
     # load user-web matrix
     R = load_matrix(data_path)
-
+    I_outlier = get_outlier(R, 0.02)
     print("=========== preprocess start =============")
-    tar_data = preprocess(ur_map, wr_map, R)
+    tar_data = preprocess(ur_map, wr_map, R, I_outlier)
     tar_data.to_csv(tar_file, index=False)
     print("=========== preprocess end =============")

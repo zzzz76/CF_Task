@@ -187,8 +187,8 @@ if __name__ == '__main__':
         dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32), ("mean", np.float32)]
         trainset = pd.read_csv(training, usecols=[0,1,2,5], dtype=dict(dtype))
         testset = pd.read_csv(testing, usecols=[0,1,2,5], dtype=dict(dtype))
-        bu = np.load(br_user).item()
-        bi = np.load(br_web).item()
+        bu = np.load(br_user, allow_pickle=True).item()
+        bi = np.load(br_web, allow_pickle=True).item()
 
         # mf training
         mfr = MFRegion(0.005, 0.02, 0.02, 30, 300,["userId", "webId", "rating", "mean"])

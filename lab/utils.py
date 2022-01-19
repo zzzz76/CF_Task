@@ -64,14 +64,14 @@ def accuray(predict_results, method="all"):
         return rmse_mae(predict_results)
 
 
-def curve(costs):
+def curve(costs, title = "Convergence curve"):
     """
     show the cost value trend
     :param costs: cost value list
     """
     x = range(len(costs))
     plt.plot(x, costs, color='r', linewidth=3)
-    plt.title("Convergence curve")
+    plt.title(title)
     plt.xlabel("generation")
     plt.ylabel("loss")
     plt.show()

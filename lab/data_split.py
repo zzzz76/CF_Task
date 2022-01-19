@@ -62,7 +62,7 @@ def reprocess(dataset, global_mean, local_means):
 
 if __name__ == '__main__':
     data_path = "../dataset1/ratings.csv"
-    part = 10
+    part = 20
 
     # set the type of data field to load
     dtype = {"userId": np.int32, "webId": np.int32, "rating": np.float32, "userRg": np.str_, "webRg": np.str_}
@@ -75,8 +75,8 @@ if __name__ == '__main__':
 
     for i in range(1, part):
         print("----- partition positon %d/%d -----" % (i, part))
-        training = "../dataset1/" + str(part - i) + "0/training.csv"
-        testing = "../dataset1/" + str(part - i) + "0/testing.csv"
+        training = "../dataset1/" + str((part - i) * 5) + "/training.csv"
+        testing = "../dataset1/" + str((part - i) * 5) + "/testing.csv"
         trainset = ratings.loc[trainsets_index[i]].reset_index(drop=True)
         testset = ratings.drop(trainsets_index[i]).reset_index(drop=True)
 

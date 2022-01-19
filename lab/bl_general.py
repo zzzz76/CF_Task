@@ -30,38 +30,41 @@ class BLGeneral(object):
         # 计算全局平均分
         self.global_mean = self.trainset[self.columns[2]].mean()
         # 调用sgd方法训练模型参数
-        self.bu, self.bi = self.train()
+        self.bu, self.bi, self.rmse, self.mae = self.train()
 
     def train(self):
         """
         训练模型
         :return:
         """
-        tr_min = 10
-        tr_last = 0
+        last_rmse = 10
+        last_mae = 10
+        last_count = 0
         costs = []
         bu, bi = self._init_bias()
         for i in range(self.number_epochs):
             print("==========  epoch %d ==========" % i)
             bu, bi = self.sgd(bu, bi)
-            cost = self.cost(bu, bi)
-            print("Training cost: ", cost)
-            costs.append(cost)
+            # cost = self.cost(bu, bi)
+            # print("Training cost: ", cost)
+            # costs.append(cost)
 
             test_results = self.test(bu, bi)
             rmse, mae = accuray(test_results)
+            costs.append(rmse)
             print("Testing rmse: ", rmse, "mae: ", mae)
 
-            if rmse < tr_min:
-                tr_min = rmse
-                tr_last = 0
-            elif tr_last < 4:
-                tr_last += 1
+            if rmse < last_rmse:
+                last_rmse = rmse
+                last_mae = mae
+                last_count = 0
+            elif last_count < 4:
+                last_count += 1
             else:
                 break
 
-        curve(costs)
-        return bu, bi
+        curve(costs, "bl_general")
+        return bu, bi, last_rmse, last_mae
 
     def _init_bias(self):
         """
@@ -116,61 +119,28 @@ class BLGeneral(object):
         """
         for uid, iid, real_rating in self.testset.itertuples(index=False):
             try:
-                if uid not in self.users_ratings.index or iid not in self.items_ratings.index:
-                    pred_rating = self.global_mean
-                else:
-                    pred_rating = self.global_mean + bu[uid] + bi[iid]
+                bias_u = 0
+                bias_i = 0
+                if uid in self.users_ratings.index:
+                    bias_u = bu[uid]
+                if iid in self.items_ratings.index:
+                    bias_i = bi[iid]
+                pred_rating = self.global_mean + bias_u + bias_i
+
             except Exception as e:
                 print(e)
             else:
                 yield uid, iid, real_rating, pred_rating
 
 
-    def predict(self, uid, iid):
-        """
-        进行评分预测
-        :param uid: 用户编号
-        :param iid: 服务编号
-        :return: 评分预测值
-        """
-        if uid not in self.users_ratings.index or iid not in self.items_ratings.index:
-            pred_rating = self.global_mean
-        else:
-            pred_rating = self.global_mean + self.bu[uid] + self.bi[iid]
-
-        return pred_rating
-
-
-    def trans_bu(self):
-        """
-        transform the data format for users bias
-        :return: the data frame
-        """
-        tar_data = []
-        for uid in self.users_ratings.index:
-            tar_data.append([uid, self.bu[uid]])
-
-        tar_data = pd.DataFrame(tar_data, columns=['userId', 'bias'])
-        return tar_data
-
-    def trans_bi(self):
-        """
-        transform the data format for items bias
-        :return: the data frame
-        """
-        tar_data = []
-        for iid in self.items_ratings.index:
-            tar_data.append([iid, self.bi[iid]])
-
-        tar_data = pd.DataFrame(tar_data, columns=['webId', 'bias'])
-        return tar_data
-
 if __name__ == '__main__':
 
-    for i in range(1, 10):
-        print("----- Training Density %d/10 -----" % i)
-        training = "../dataset1/" + str(i) + "0/training.csv"
-        testing = "../dataset1/"+ str(i) +"0/testing.csv"
+    for i in range(1,20):
+        print("----- Training Density %d/20 -----" % i)
+        training = "../dataset1/" + str(i * 5) + "/training.csv"
+        testing = "../dataset1/"+ str(i * 5) +"/testing.csv"
+        bg_user = "../dataset1/"+ str(i * 5) +"/bg_user.npy"
+        bg_web = "../dataset1/"+ str(i * 5) +"/bg_web.npy"
 
         print("load trainset: " + training)
         print("load testset:" + testing)
@@ -181,9 +151,10 @@ if __name__ == '__main__':
         testset = pd.read_csv(testing, usecols=range(3), dtype=dict(dtype))
 
         # training process
-        blg = BLGeneral(300, 0.02, 0.001, ["userId", "webId", "rating"])
+        blg = BLGeneral(300, 0.005, 0.02, ["userId", "webId", "rating"])
         blg.fit(trainset, testset)
+        print("Final rmse: ", blg.rmse, "mae: ", blg.mae)
 
         # save bias
-        # blg.trans_bu().to_csv("../dataset1/userbias.csv", index=False)
-        # blg.trans_bi().to_csv("../dataset1/webbias.csv", index=False)
+        np.save(bg_user, blg.bu)
+        np.save(bg_web, blg.bi)

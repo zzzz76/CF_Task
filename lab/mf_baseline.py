@@ -27,17 +27,18 @@ class MFBaseline(object):
         self.number_epochs = number_epochs  # 最大迭代次数
         self.columns = columns
 
-    def fit(self,bcf, trainset, testset):
-        self.bcf = bcf # 基准预测模型
+    def fit(self, trainset, testset, bu, bi):
         self.trainset = pd.DataFrame(trainset)
         self.testset = pd.DataFrame(testset)
+        self.bu = bu
+        self.bi = bi
 
         self.users_ratings = trainset.groupby(self.columns[0]).agg([list])[[self.columns[1], self.columns[2]]]
         self.items_ratings = trainset.groupby(self.columns[1]).agg([list])[[self.columns[0], self.columns[2]]]
 
         self.globalMean = self.trainset[self.columns[2]].mean()
 
-        self.U, self.W = self.train()
+        self.U, self.W, self.rmse, self.mae = self.train()
 
     def train(self):
         """
@@ -46,31 +47,34 @@ class MFBaseline(object):
         """
         # test 用来防止 过拟合 以及 超参数的调节
         # 快速停止策略，如果test 连续5次增加
-        tr_min = 10
-        tr_last = 0
+        last_rmse = 10
+        last_mae = 10
+        last_count = 0
         costs = []
         U, W = self._init_matrix() # 模型初始化
         for i in range(self.number_epochs):
             print("==========  epoch %d ==========" % i)
             U, W = self.sgd(U, W) # 每一轮更新 都要 计算 cost
-            cost = self.cost(U, W)
-            print("Training cost: ", cost)
-            costs.append(cost)
+            # cost = self.cost(U, W)
+            # print("Training cost: ", cost)
+            # costs.append(cost)
 
             test_results = self.test(U, W)
             rmse, mae = accuray(test_results, method="all")
+            costs.append(rmse)
             print("Testing rmse: ", rmse, "mae: ", mae)
 
-            if rmse < tr_min:
-                tr_min = rmse
-                tr_last = 0
-            elif tr_last < 4:
-                tr_last += 1
+            if rmse < last_rmse:
+                last_rmse = rmse
+                last_mae = mae
+                last_count = 0
+            elif last_count < 4:
+                last_count += 1
             else:
                 break
 
-        curve(costs) # 对每一轮的cost 绘制 收敛图
-        return U, W
+        curve(costs, "mf_baseline")
+        return U, W, last_rmse, last_mae
 
 
     def _init_matrix(self):
@@ -105,7 +109,7 @@ class MFBaseline(object):
                 v_u = U[uid]  # 用户向量
                 v_i = W[iid]  # 物品向量
                 # err 的计算需要修改
-                err = np.float32(r_ui - np.dot(v_u, v_i) - self.bcf.predict(uid, iid))
+                err = np.float32(r_ui - np.dot(v_u, v_i) - (self.globalMean + self.bu[uid] + self.bi[iid]))
 
                 v_u += self.alpha * (err * v_i - self.reg_u * v_u)
                 v_i += self.alpha * (err * v_u - self.reg_w * v_i)
@@ -116,7 +120,7 @@ class MFBaseline(object):
                 print("+++++++++++++++++++")
                 print(U[uid])
                 print(W[iid])
-                print(np.float32(r_ui - np.dot(U[uid], W[iid]) - self.bcf.predict(uid, iid)))
+                print(np.float32(r_ui - np.dot(U[uid], W[iid]) - (self.globalMean + self.bu[uid] + self.bi[iid])))
                 print("+++++++++++++++++++")
 
         return U, W
@@ -132,15 +136,15 @@ class MFBaseline(object):
         for uid, iid, r_ui in self.trainset.itertuples(index=False):
             v_u = U[uid]  # 用户向量
             v_i = W[iid]  # 物品向量
-            cost += pow(r_ui - np.dot(v_u, v_i) - self.bcf.predict(uid, iid), 2)
+            cost += pow(r_ui - np.dot(v_u, v_i) - (self.globalMean + self.bu[uid] + self.bi[iid]), 2)
 
         for uid in self.users_ratings.index:
-            cost += self.reg_w * np.linalg.norm(U[uid])
+            cost += self.reg_w * pow(np.linalg.norm(U[uid]), 2)
 
         for iid in self.items_ratings.index:
-            cost += self.reg_u * np.linalg.norm(W[iid])
+            cost += self.reg_u * pow(np.linalg.norm(W[iid]), 2)
 
-        return cost
+        return cost/2
 
 
     def test(self, U, W):
@@ -152,10 +156,17 @@ class MFBaseline(object):
         """
         for uid, iid, real_rating in self.testset.itertuples(index=False):
             try:
-                if uid not in self.users_ratings.index or iid not in self.items_ratings.index:
-                    pred_rating = self.globalMean
-                else:
-                    pred_rating = np.dot(U[uid], W[iid]) + self.bcf.predict(uid, iid)
+                bias_u = 0
+                bias_i = 0
+                mf_g = 0
+                if uid in self.users_ratings.index:
+                    bias_u = self.bu[uid]
+                if iid in self.items_ratings.index:
+                    bias_i = self.bi[iid]
+                if uid in self.users_ratings.index and iid in self.items_ratings.index:
+                    mf_g = np.dot(U[uid], W[iid])
+                pred_rating = mf_g + self.globalMean + bias_u + bias_i
+
             except Exception as e:
                 print(e)
             else:
@@ -164,10 +175,12 @@ class MFBaseline(object):
 
 if __name__ == '__main__':
 
-    for i in range(2, 3):
-        print("----- Training Density %d/10 -----" % i)
-        training = "../dataset1/" + str(i) + "0/training.csv"
-        testing = "../dataset1/"+ str(i) +"0/testing.csv"
+    for i in [1,2,3,4,5,6,7,8,9,10]:
+        print("----- Training Density %d/20 -----" % i)
+        training = "../dataset1/" + str(i * 5) + "/training.csv"
+        testing = "../dataset1/"+ str(i * 5) +"/testing.csv"
+        bg_user = "../dataset1/" + str(i * 5) + "/bg_user.npy"
+        bg_web = "../dataset1/" + str(i * 5) + "/bg_web.npy"
 
         print("load trainset: " + training)
         print("load testset:" + testing)
@@ -176,11 +189,9 @@ if __name__ == '__main__':
         dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32)]
         trainset = pd.read_csv(training, usecols=range(3), dtype=dict(dtype))
         testset = pd.read_csv(testing, usecols=range(3), dtype=dict(dtype))
-
-        # baseline training
-        bcf = BLGeneral(300, 0.02, 0.001, ["userId", "webId", "rating"])
-        bcf.fit(trainset, testset)
+        bu = np.load(bg_user).item()
+        bi = np.load(bg_web).item()
 
         # mf training
-        mfb = MFBaseline(0.003, 0.001, 0.001, 20, 300,["userId", "webId", "rating"])
-        mfb.fit(bcf, trainset, testset)
+        mfb = MFBaseline(0.005, 0.02, 0.02, 30, 300,["userId", "webId", "rating"])
+        mfb.fit(trainset, testset, bu, bi)

@@ -35,47 +35,43 @@ class MFGeneral(object):
 
         self.globalMean = self.trainset[self.columns[2]].mean()
 
-        self.U, self.W = self.train()
+        self.U, self.W, self.rmse, self.mae = self.train()
 
     def train(self):
         """
         训练模型
         :return: 隐空间矩阵
         """
-        beta = 0.002
-        decay_rate = 0.9
-        decay_steps = 5
         # test 用来防止 过拟合 以及 超参数的调节
         # 快速停止策略，如果test 连续5次增加
-        tr_min = 10
-        tr_last = 0
+        last_rmse = 10
+        last_mae = 10
+        last_count = 0
         costs = []
         U, W = self._init_matrix() # 模型初始化
         for i in range(self.number_epochs):
-
-            decayed_beta = beta * decay_rate ** (i / decay_steps) + 0.0005
-
-            # print(decayed_beta)
             print("==========  epoch %d ==========" % i)
-            U, W = self.sgd(U, W, decayed_beta) # 每一轮更新 都要 计算 cost
-            cost = self.cost(U, W)
-            print("Training cost: ", cost)
-            costs.append(cost)
+            U, W = self.sgd(U, W) # 每一轮更新 都要 计算 cost
+            # cost = self.cost(U, W)
+            # print("Training cost: ", cost)
+            # costs.append(cost)
 
             test_results = self.test(U, W)
             rmse, mae = accuray(test_results, method="all")
+            costs.append(rmse)
             print("Testing rmse: ", rmse, "mae: ", mae)
 
-            if rmse < tr_min:
-                tr_min = rmse
-                tr_last = 0
-            elif tr_last < 4:
-                tr_last += 1
+            if rmse < last_rmse:
+                last_rmse = rmse
+                last_mae = mae
+                last_count = 0
+            elif last_count < 4:
+                last_count += 1
             else:
                 break
 
-        curve(costs) # 对每一轮的cost 绘制 收敛图
-        return U, W
+        curve(costs, "mf_general")
+        return U, W, last_rmse, last_mae
 
 
     def _init_matrix(self):
@@ -95,7 +91,7 @@ class MFGeneral(object):
         ))
         return U, W
 
-    def sgd(self, U, W, decay):
+    def sgd(self, U, W):
         """
         使用随机梯度下降，优化模型
         :param U: 用户隐空间矩阵
@@ -111,8 +107,8 @@ class MFGeneral(object):
                 v_i = W[iid]  # 物品向量
                 err = np.float32(r_ui - np.dot(v_u, v_i))
 
-                v_u += decay * (err * v_i - self.reg_u * v_u)
-                v_i += decay * (err * v_u - self.reg_w * v_i)
+                v_u += self.alpha * (err * v_i - self.reg_u * v_u)
+                v_i += self.alpha * (err * v_u - self.reg_w * v_i)
 
 
                 U[uid] = v_u
@@ -140,12 +136,12 @@ class MFGeneral(object):
             cost += pow(r_ui - np.dot(v_u, v_i), 2)
 
         for uid in self.users_ratings.index:
-            cost += self.reg_w * np.linalg.norm(U[uid])
+            cost += self.reg_w * pow(np.linalg.norm(U[uid]), 2)
 
         for iid in self.items_ratings.index:
-            cost += self.reg_u * np.linalg.norm(W[iid])
+            cost += self.reg_u * pow(np.linalg.norm(W[iid]), 2)
 
-        return cost
+        return cost/2
 
 
     def test(self, U, W):
@@ -171,10 +167,10 @@ if __name__ == '__main__':
     # training = "../dataset1/30/training.csv"
     # testing = "../dataset1/30/testing.csv"
 
-    for i in range(1, 2):
-        print("----- Training Density %d/10 -----" % i)
-        training = "../dataset1/" + str(i) + "0/training.csv"
-        testing = "../dataset1/"+ str(i) +"0/testing.csv"
+    for i in [1,2,3,4,5,6,7,8,9,10]:
+        print("----- Training Density %d/20 -----" % i)
+        training = "../dataset1/" + str(i * 5) + "/training.csv"
+        testing = "../dataset1/"+ str(i * 5) +"/testing.csv"
 
         print("load trainset: " + training)
         print("load testset:" + testing)
@@ -185,5 +181,6 @@ if __name__ == '__main__':
         testset = pd.read_csv(testing, usecols=range(3), dtype=dict(dtype))
 
         # training process
-        mfg = MFGeneral(0.002, 0.001, 0.001, 20, 300, ["userId", "webId", "rating"])
+        mfg = MFGeneral(0.005, 0.02, 0.02, 30, 300, ["userId", "webId", "rating"])
         mfg.fit(trainset, testset)
+        print("Final rmse: ", mfg.rmse, "mae: ", mfg.mae)

@@ -3,33 +3,41 @@ Used to split the data set
 
 @author zzzz76
 """
-import math
 import pandas as pd
 import numpy as np
 
 
-def data_split(ratings, frac=0.8):
+def data_split(ratings, part=10, random=False):
     '''
     split each user's rating data proportionally
     :param ratings: rating dataset
     :param part: number of parts
+    :param random: split randomly
     :return: the partition index lists
     '''
-    _ratings = ratings.reset_index()
-    local_ratings = _ratings.groupby([_ratings['userRg'], _ratings['webRg']]).agg([list])
+    # 统计常见训练集占比的索引信息，第一行统计占比为1，第二行统计占比为9/10
+    trainsets_index = [[] for i in range(part)]
+    # 为了保证每个用户在测试集和训练集都有数据，因此按userId聚合
+    for uid in ratings.groupby("userId").any().index:
+        user_rating_data = ratings.where(ratings["userId"] == uid).dropna()
+        # 对指定用户的评分数据进行划分时，数据段的步长
+        step = round(len(user_rating_data) / part)
 
-    testset_index = []
-    for index_list, uid_list, iid_list, rating_list in local_ratings.itertuples(index=False):
-        # 可以在ceil 处进行概率随机
-        pos = round(len(index_list) * frac)
-        # 因为不可变类型不能被 shuffle 方法作用，所以需要强行转换为列表
-        _index_list = list(index_list)
-        np.random.shuffle(_index_list)
-        testset_index += list(_index_list[pos:])
+        if random:
+            # 因为不可变类型不能被 shuffle方法作用，所以需要强行转换为列表
+            index = list(user_rating_data.index)
+            np.random.shuffle(index)
+            # 将每个用户(x-i)/x的数据作为训练集，剩余的作为测试集
+            for i in range(part):
+                train_pos = step * i
+                trainsets_index[i] += list(index[train_pos:])
+        else:
+            # 将每个用户(x-i)/x的数据作为训练集，剩余的作为测试集
+            for i in range(part):
+                train_pos = step * i
+                trainsets_index[i] += list(user_rating_data.index.values[train_pos:])
 
-    testset = ratings.loc[testset_index].reset_index(drop=True)
-    trainset = ratings.drop(testset_index).reset_index(drop=True)
-    return trainset, testset
+    return trainsets_index
 
 
 def reprocess(dataset, global_mean, local_means):
@@ -45,7 +53,6 @@ def reprocess(dataset, global_mean, local_means):
         mean = local_means.get((urg, irg))
         if mean is None:
             mean = global_mean
-            print("local mean is none")
         mean_col.append([mean])
 
     mean_col = pd.DataFrame(mean_col, columns=['mean'])
@@ -55,8 +62,7 @@ def reprocess(dataset, global_mean, local_means):
 
 if __name__ == '__main__':
     data_path = "../dataset1/ratings.csv"
-    training = "../dataset1/25/training.csv"
-    testing = "../dataset1/25/testing.csv"
+    part = 20
 
     # set the type of data field to load
     dtype = {"userId": np.int32, "webId": np.int32, "rating": np.float32, "userRg": np.str_, "webRg": np.str_}
@@ -64,15 +70,23 @@ if __name__ == '__main__':
     ratings = pd.read_csv(data_path, dtype=dtype, usecols=range(5))
 
     print("=========== split start =============")
-    trainset, testset = data_split(ratings, 0.25)
-    global_mean = trainset['rating'].mean()
-    local_mean = ratings['rating'].groupby([ratings['userRg'], ratings['webRg']]).mean()
-    # local_sums = trainset['rating'].groupby([trainset['userRg'], trainset['webRg']]).sum()
-    # local_counts = trainset['rating'].groupby([trainset['userRg'], trainset['webRg']]).count()
-    trainset = reprocess(trainset, global_mean, local_mean)
-    testset = reprocess(testset, global_mean, local_mean)
+    trainsets_index = data_split(ratings, part, random=True)
     print("=========== split end =============")
-    trainset.to_csv(training, index=False)
-    testset.to_csv(testing, index=False)
-    print("trainset save to: ", training)
-    print("testset save to: ", testing)
+
+    for i in [1,14,15,16,17,18,19]:
+        print("----- partition positon %d/%d -----" % (i, part))
+        training = "../dataset1/" + str((part - i) * 5) + "/training.csv"
+        testing = "../dataset1/" + str((part - i) * 5) + "/testing.csv"
+        trainset = ratings.loc[trainsets_index[i]].reset_index(drop=True)
+        testset = ratings.drop(trainsets_index[i]).reset_index(drop=True)
+
+        # get the global mean and local means
+        global_mean = trainset['rating'].mean()
+        local_means = ratings['rating'].groupby([ratings['userRg'], ratings['webRg']]).mean()
+        trainset = reprocess(trainset, global_mean, local_means)
+        testset = reprocess(testset, global_mean, local_means)
+
+        trainset.to_csv(training, index=False)
+        testset.to_csv(testing, index=False)
+        print("save trainset: " + training)
+        print("save testset:" + testing)

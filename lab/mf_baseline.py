@@ -175,7 +175,7 @@ class MFBaseline(object):
 
 if __name__ == '__main__':
 
-    for i in [6]:
+    for i in [2,3,4,5,6]:
         print("----- Training Density %d/20 -----" % i)
         training = "../dataset1/" + str(i * 5) + "/training.csv"
         testing = "../dataset1/"+ str(i * 5) +"/testing.csv"

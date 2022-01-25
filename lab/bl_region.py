@@ -133,7 +133,7 @@ class BLRegion(object):
 
 if __name__ == '__main__':
 
-    for i in [2,4,6,8,10,12]:
+    for i in [1,2,3,4,5,6]:
         print("----- Training Density %d/20 -----" % i)
         training = "../dataset1/" + str(i * 5) + "/training.csv"
         testing = "../dataset1/"+ str(i * 5) +"/testing.csv"
@@ -149,7 +149,7 @@ if __name__ == '__main__':
         testset = pd.read_csv(testing, usecols=[0,1,2,5], dtype=dict(dtype))
 
         # training process
-        blr = BLRegion(40, 0.01, 0.001, ["userId", "webId", "rating", "mean"])
+        blr = BLRegion(70, 0.005, 0.001, ["userId", "webId", "rating", "mean"])
         blr.fit(trainset, testset)
         print("Final rmse: ", blr.rmse, "mae: ", blr.mae)
 

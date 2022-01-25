@@ -28,8 +28,8 @@ class BLGeneral(object):
         # 物品评分数据
         self.items_ratings = trainset.groupby(self.columns[1]).agg([list])[[self.columns[0], self.columns[2]]]
         # 计算全局平均分
-        # self.global_mean = self.trainset[self.columns[2]].mean()
-        self.global_mean = 0.9181392788887024
+        self.global_mean = self.trainset[self.columns[2]].mean()
+        # self.global_mean = 0.9181392788887024
         # 调用sgd方法训练模型参数
         self.bu, self.bi, self.rmse, self.mae = self.train()
 
@@ -136,7 +136,7 @@ class BLGeneral(object):
 
 if __name__ == '__main__':
 
-    for i in [1,2,3,4,5,6]:
+    for i in [2,3,4,5,6]:
         print("----- Training Density %d/20 -----" % i)
         training = "../dataset1/" + str(i * 5) + "/training.csv"
         testing = "../dataset1/"+ str(i * 5) +"/testing.csv"
@@ -152,7 +152,7 @@ if __name__ == '__main__':
         testset = pd.read_csv(testing, usecols=range(3), dtype=dict(dtype))
 
         # training process
-        blg = BLGeneral(70, 0.005, 0.02, ["userId", "webId", "rating"])
+        blg = BLGeneral(70, 0.005, 0.001, ["userId", "webId", "rating"])
         blg.fit(trainset, testset)
         print("Final rmse: ", blg.rmse, "mae: ", blg.mae)
 

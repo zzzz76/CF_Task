@@ -40,7 +40,7 @@ def load_map(data_path, key, value):
     return map
 
 
-def preprocess(ur_map, wr_map, R, I_outlier):
+def preprocess(ur_map, wr_map, R):
     """
     preprocess the raw data
     :param ur_map: user-region map
@@ -53,11 +53,32 @@ def preprocess(ur_map, wr_map, R, I_outlier):
 
     for i in range(m):
         for j in range(n):
-            if R[i][j] >= 0 and j != 4700 and j != 4701 and I_outlier[i][j] != 1:
-                tar_data.append([i, j, R[i][j], ur_map[i], wr_map[j]])
+            if R[i][j] >= 0 and j != 4700 and j != 4701 and j != 5295 and wr_map[j] != 'null':
+                    tar_data.append([i, j, R[i][j], ur_map[i].split()[0], wr_map[j].split()[0]])
 
     tar_data = pd.DataFrame(tar_data, columns=['userId', 'webId', 'rating', 'userRg', 'webRg'])
     return tar_data
+
+
+# def preprocess(ur_map, wr_map, R):
+#     """
+#     preprocess the raw data
+#     :param ur_map: user-region map
+#     :param wr_map: web-region map
+#     :param R: user-web matrix
+#     :return: the target data
+#     """
+#     tar_data = []
+#     m, n = R.shape
+#
+#     for i in range(m):
+#         for j in range(n):
+#             if R[i][j] >= 0 and j != 4700 and j != 4701 and j != 5295:
+#                     tar_data.append([i, j, R[i][j], ur_map[i], wr_map[j]])
+#
+#     tar_data = pd.DataFrame(tar_data, columns=['userId', 'webId', 'rating', 'userRg', 'webRg'])
+#     return tar_data
+
 
 def get_outlier(R, outlier_frac):
     """
@@ -99,12 +120,14 @@ if __name__ == '__main__':
     tar_file = "../dataset1/ratings.csv"
 
     # load user-region dict and web-region dict
-    ur_map = load_map(user_path, 0, 2)
-    wr_map = load_map(web_path, 0, 4)
+    ur_map = load_map(user_path, 0, 4)
+    wr_map = load_map(web_path, 0, 6)
+    # ur_map = load_map(user_path, 0, 2)
+    # wr_map = load_map(web_path, 0, 4)
     # load user-web matrix
     R = load_matrix(data_path)
-    I_outlier = get_outlier(R, 0.02)
+    # I_outlier = get_outlier(R, 0.1)
     print("=========== preprocess start =============")
-    tar_data = preprocess(ur_map, wr_map, R, I_outlier)
+    tar_data = preprocess(ur_map, wr_map, R)
     tar_data.to_csv(tar_file, index=False)
     print("=========== preprocess end =============")

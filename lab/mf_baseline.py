@@ -55,13 +55,13 @@ class MFBaseline(object):
         for i in range(self.number_epochs):
             print("==========  epoch %d ==========" % i)
             U, W = self.sgd(U, W) # 每一轮更新 都要 计算 cost
-            # cost = self.cost(U, W)
-            # print("Training cost: ", cost)
-            # costs.append(cost)
+            cost = self.cost(U, W)
+            print("Training cost: ", cost)
+            costs.append(cost)
 
             test_results = self.test(U, W)
             rmse, mae = accuray(test_results, method="all")
-            costs.append(rmse)
+            # costs.append(rmse)
             print("Testing rmse: ", rmse, "mae: ", mae)
 
             if rmse < last_rmse:
@@ -175,7 +175,7 @@ class MFBaseline(object):
 
 if __name__ == '__main__':
 
-    for i in [1,2,3,4,5,6,7,8,9,10]:
+    for i in [6]:
         print("----- Training Density %d/20 -----" % i)
         training = "../dataset1/" + str(i * 5) + "/training.csv"
         testing = "../dataset1/"+ str(i * 5) +"/testing.csv"
@@ -193,5 +193,6 @@ if __name__ == '__main__':
         bi = np.load(bg_web, allow_pickle=True).item()
 
         # mf training
-        mfb = MFBaseline(0.005, 0.02, 0.02, 30, 300,["userId", "webId", "rating"])
+        mfb = MFBaseline(0.003, 0.02, 0.02, 10, 60,["userId", "webId", "rating"])
         mfb.fit(trainset, testset, bu, bi)
+        print("Final rmse: ", mfb.rmse, "mae: ", mfb.mae)

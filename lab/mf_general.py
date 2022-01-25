@@ -52,13 +52,13 @@ class MFGeneral(object):
         for i in range(self.number_epochs):
             print("==========  epoch %d ==========" % i)
             U, W = self.sgd(U, W) # 每一轮更新 都要 计算 cost
-            # cost = self.cost(U, W)
-            # print("Training cost: ", cost)
-            # costs.append(cost)
+            cost = self.cost(U, W)
+            print("Training cost: ", cost)
+            costs.append(cost)
 
             test_results = self.test(U, W)
             rmse, mae = accuray(test_results, method="all")
-            costs.append(rmse)
+            # costs.append(rmse)
             print("Testing rmse: ", rmse, "mae: ", mae)
 
             if rmse < last_rmse:
@@ -167,7 +167,7 @@ if __name__ == '__main__':
     # training = "../dataset1/30/training.csv"
     # testing = "../dataset1/30/testing.csv"
 
-    for i in [1,2,3,4,5,6,7,8,9,10]:
+    for i in [5]:
         print("----- Training Density %d/20 -----" % i)
         training = "../dataset1/" + str(i * 5) + "/training.csv"
         testing = "../dataset1/"+ str(i * 5) +"/testing.csv"
@@ -181,6 +181,6 @@ if __name__ == '__main__':
         testset = pd.read_csv(testing, usecols=range(3), dtype=dict(dtype))
 
         # training process
-        mfg = MFGeneral(0.005, 0.02, 0.02, 30, 300, ["userId", "webId", "rating"])
+        mfg = MFGeneral(0.003, 0.02, 0.02, 10, 60, ["userId", "webId", "rating"])
         mfg.fit(trainset, testset)
         print("Final rmse: ", mfg.rmse, "mae: ", mfg.mae)

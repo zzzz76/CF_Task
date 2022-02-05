@@ -167,7 +167,7 @@ if __name__ == '__main__':
     # training = "../dataset1/30/training.csv"
     # testing = "../dataset1/30/testing.csv"
 
-    for i in [5,6]:
+    for i in [2,3,4,5,6]:
         print("----- Training Density %d/20 -----" % i)
         training = "../dataset1/" + str(i * 5) + "/training.csv"
         testing = "../dataset1/"+ str(i * 5) +"/testing.csv"

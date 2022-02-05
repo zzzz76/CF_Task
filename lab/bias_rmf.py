@@ -119,16 +119,16 @@ class Bias_rmf(object):
                 ## Item-LF W
                 v_u = U[uid]  # 用户向量
                 v_i = W[iid]  # 物品向量
-                err = np.float32(r_ui - np.dot(v_u, v_i) - mean - bu[uid] - bi[iid])
+                err = np.float32(r_ui - np.dot(v_u, v_i) * 0.9 - (mean + bu[uid] + bi[iid]) * 0.1)
 
-                v_u += self.alpha * (err * v_i - self.reg_u * v_u)
-                v_i += self.alpha * (err * v_u - self.reg_w * v_i)
+                v_u += self.alpha * (err * v_i * 0.9 - self.reg_u * v_u)
+                v_i += self.alpha * (err * v_u * 0.9 - self.reg_w * v_i)
 
                 U[uid] = v_u
                 W[iid] = v_i
 
-                bu[uid] += self.alpha * (err - self.reg_bu * bu[uid])
-                bi[iid] += self.alpha * (err - self.reg_bi * bi[iid])
+                bu[uid] += self.alpha * (err * 0.1 - self.reg_bu * bu[uid])
+                bi[iid] += self.alpha * (err * 0.1 - self.reg_bi * bi[iid])
 
             except:
                 print("+++++++++++++++++++")
@@ -150,7 +150,7 @@ class Bias_rmf(object):
         for uid, iid, r_ui, mean in self.trainset.itertuples(index=False):
             v_u = U[uid]  # 用户向量
             v_i = W[iid]  # 物品向量
-            cost += pow(r_ui - np.dot(v_u, v_i) - mean - bu[uid] - bi[iid], 2)
+            cost += pow(r_ui - np.dot(v_u, v_i) * 0.9 - (mean + bu[uid] + bi[iid]) * 0.1, 2)
 
         for uid in self.users_ratings.index:
             cost += self.reg_w * np.linalg.norm(U[uid]) + self.reg_bu * bu[uid]
@@ -179,19 +179,35 @@ class Bias_rmf(object):
                     bias_i = bi[iid]
                 if uid in self.users_ratings.index and iid in self.items_ratings.index:
                     mf = np.dot(U[uid], W[iid])
-                pred_rating = mf + mean + bias_u + bias_i
+                pred_rating = mf * 0.9 + (mean + bias_u + bias_i) * 0.1
 
             except Exception as e:
                 print(e)
             else:
                 yield uid, iid, real_rating, pred_rating
 
+def reprocess(dataset, local_means):
+    """
+    reprocess data with region-region ratings
+    :param dataset: data without mean ratings
+    :param local_means: local mean ratings
+    :return: the dataset with mean ratings
+    """
+    _dataset = []
+    for uid, iid, rating, urg, irg in dataset.itertuples(index=False):
+        mean = local_means.get((urg, irg))
+        if not mean is None:
+            _dataset.append([uid, iid, rating, mean])
+
+    _dataset = pd.DataFrame(_dataset, columns=['userId','webId','rating','mean'])
+    return  _dataset
+
 
 if __name__ == '__main__':
     # training = "../dataset1/30/training.csv"
     # testing = "../dataset1/30/testing.csv"
 
-    for i in [5,6]:
+    for i in [2,3,4,5,6]:
         print("----- Training Density %d/20 -----" % i)
         training = "../dataset1/" + str(i * 5) + "/training.csv"
         testing = "../dataset1/"+ str(i * 5) +"/testing.csv"
@@ -200,9 +216,14 @@ if __name__ == '__main__':
         print("load testset:" + testing)
 
         # load data
-        dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32), ("mean", np.float32)]
-        trainset = pd.read_csv(training, usecols=[0,1,2,5], dtype=dict(dtype))
-        testset = pd.read_csv(testing, usecols=[0,1,2,5], dtype=dict(dtype))
+        dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32), ("userRg", np.str_), ("webRg", np.str_)]
+        trainset = pd.read_csv(training, usecols=range(0,5), dtype=dict(dtype))
+        testset = pd.read_csv(testing, usecols=range(0,5), dtype=dict(dtype))
+
+        # catch local matrix
+        local_means = trainset['rating'].groupby([trainset['userRg'], trainset['webRg']]).mean()
+        trainset = reprocess(trainset, local_means)
+        testset = reprocess(testset, local_means)
 
         # training process
         brm = Bias_rmf(0.003, 0.02, 0.02, 0.02, 0.02, 10, 60, ["userId", "webId", "rating", "mean"])

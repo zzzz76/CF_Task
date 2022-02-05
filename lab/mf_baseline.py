@@ -109,10 +109,10 @@ class MFBaseline(object):
                 v_u = U[uid]  # 用户向量
                 v_i = W[iid]  # 物品向量
                 # err 的计算需要修改
-                err = np.float32(r_ui - np.dot(v_u, v_i) - (self.globalMean + self.bu[uid] + self.bi[iid]))
+                err = np.float32(r_ui - np.dot(v_u, v_i) * 0.5 - (self.globalMean + self.bu[uid] + self.bi[iid]) * 0.5)
 
-                v_u += self.alpha * (err * v_i - self.reg_u * v_u)
-                v_i += self.alpha * (err * v_u - self.reg_w * v_i)
+                v_u += self.alpha * (err * v_i * 0.5 - self.reg_u * v_u)
+                v_i += self.alpha * (err * v_u * 0.5 - self.reg_w * v_i)
 
                 U[uid] = v_u
                 W[iid] = v_i
@@ -136,7 +136,7 @@ class MFBaseline(object):
         for uid, iid, r_ui in self.trainset.itertuples(index=False):
             v_u = U[uid]  # 用户向量
             v_i = W[iid]  # 物品向量
-            cost += pow(r_ui - np.dot(v_u, v_i) - (self.globalMean + self.bu[uid] + self.bi[iid]), 2)
+            cost += pow(r_ui - np.dot(v_u, v_i) * 0.5 - (self.globalMean + self.bu[uid] + self.bi[iid]) * 0.5 , 2)
 
         for uid in self.users_ratings.index:
             cost += self.reg_w * pow(np.linalg.norm(U[uid]), 2)
@@ -165,7 +165,7 @@ class MFBaseline(object):
                     bias_i = self.bi[iid]
                 if uid in self.users_ratings.index and iid in self.items_ratings.index:
                     mf_g = np.dot(U[uid], W[iid])
-                pred_rating = mf_g + self.globalMean + bias_u + bias_i
+                pred_rating = mf_g * 0.5 + (self.globalMean + bias_u + bias_i) * 0.5
 
             except Exception as e:
                 print(e)

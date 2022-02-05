@@ -35,8 +35,8 @@ class Bias_svd(object):
         self.users_ratings = trainset.groupby(self.columns[0]).agg([list])[[self.columns[1], self.columns[2]]]
         self.items_ratings = trainset.groupby(self.columns[1]).agg([list])[[self.columns[0], self.columns[2]]]
 
-        # self.globalMean = self.trainset[self.columns[2]].mean()
-        self.globalMean = 0.9181392788887024
+        self.globalMean = self.trainset[self.columns[2]].mean()
+        # self.globalMean = 0.9181392788887024
 
 
         self.U, self.W, self.bu, self.bi, self.rmse, self.mae = self.train()
@@ -122,16 +122,16 @@ class Bias_svd(object):
                 ## Item-LF W
                 v_u = U[uid]  # 用户向量
                 v_i = W[iid]  # 物品向量
-                err = np.float32(r_ui - np.dot(v_u, v_i) - self.globalMean - bu[uid] - bi[iid])
+                err = np.float32(r_ui - np.dot(v_u, v_i) * 0.8 - (self.globalMean + bu[uid] + bi[iid]) * 0.2)
 
-                v_u += self.alpha * (err * v_i - self.reg_u * v_u)
-                v_i += self.alpha * (err * v_u - self.reg_w * v_i)
+                v_u += self.alpha * (err * v_i * 0.8 - self.reg_u * v_u)
+                v_i += self.alpha * (err * v_u * 0.8 - self.reg_w * v_i)
 
                 U[uid] = v_u
                 W[iid] = v_i
 
-                bu[uid] += self.alpha * (err - self.reg_bu * bu[uid])
-                bi[iid] += self.alpha * (err - self.reg_bi * bi[iid])
+                bu[uid] += self.alpha * (err * 0.2 - self.reg_bu * bu[uid])
+                bi[iid] += self.alpha * (err * 0.2 - self.reg_bi * bi[iid])
 
             except:
                 print("+++++++++++++++++++")
@@ -153,7 +153,7 @@ class Bias_svd(object):
         for uid, iid, r_ui in self.trainset.itertuples(index=False):
             v_u = U[uid]  # 用户向量
             v_i = W[iid]  # 物品向量
-            cost += pow(r_ui - np.dot(v_u, v_i) - self.globalMean - bu[uid] - bi[iid], 2)
+            cost += pow(r_ui - np.dot(v_u, v_i) * 0.8 - (self.globalMean + bu[uid] + bi[iid]) * 0.2, 2)
 
         for uid in self.users_ratings.index:
             cost += self.reg_w * np.linalg.norm(U[uid]) + self.reg_bu * bu[uid]
@@ -182,7 +182,7 @@ class Bias_svd(object):
                     bias_i = bi[iid]
                 if uid in self.users_ratings.index and iid in self.items_ratings.index:
                     mf = np.dot(U[uid], W[iid])
-                pred_rating = mf + self.globalMean + bias_u + bias_i
+                pred_rating = mf * 0.8 + (self.globalMean + bias_u + bias_i) * 0.2
 
             except Exception as e:
                 print(e)
@@ -194,7 +194,7 @@ if __name__ == '__main__':
     # training = "../dataset1/30/training.csv"
     # testing = "../dataset1/30/testing.csv"
 
-    for i in [1,2,3,4,5,6]:
+    for i in [2,3,4,5,6]:
         print("----- Training Density %d/20 -----" % i)
         training = "../dataset1/" + str(i * 5) + "/training.csv"
         testing = "../dataset1/"+ str(i * 5) +"/testing.csv"

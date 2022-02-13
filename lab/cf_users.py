@@ -1,8 +1,6 @@
-import os
-
 import pandas as pd
 import numpy as np
-from lab.utils import accuray, curve
+from lab.utils import accuray
 
 
 def compute_pearson_similarity(ratings_matrix, based="user"):

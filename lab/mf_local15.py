@@ -163,11 +163,27 @@ class MFGeneral(object):
                 yield uid, iid, real_rating, pred_rating
 
 
+def reprocess(dataset):
+    """
+    reprocess data with region-region ratings
+    :param dataset: data without mean ratings
+    :param local_means: local mean ratings
+    :return: the dataset with mean ratings
+    """
+    _dataset = []
+    for uid, iid, rating, urg, irg in dataset.itertuples(index=False):
+        if urg == "United States" and irg == "United States":
+            _dataset.append([uid, iid, rating])
+
+    _dataset = pd.DataFrame(_dataset, columns=['userId','webId','rating'])
+    return  _dataset
+
+
 if __name__ == '__main__':
     # training = "../dataset1/30/training.csv"
     # testing = "../dataset1/30/testing.csv"
 
-    for i in [4]:
+    for i in [4,5,6]:
         print("----- Training Density %d/20 -----" % i)
         training = "../dataset1/" + str(i * 5) + "/training.csv"
         testing = "../dataset1/"+ str(i * 5) +"/testing.csv"
@@ -176,11 +192,14 @@ if __name__ == '__main__':
         print("load testset:" + testing)
 
         # load data
-        dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32)]
-        trainset = pd.read_csv(training, usecols=range(3), dtype=dict(dtype))
-        testset = pd.read_csv(testing, usecols=range(3), dtype=dict(dtype))
+        dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32), ("userRg", np.str_), ("webRg", np.str_)]
+        trainset = pd.read_csv(training, usecols=range(0,5), dtype=dict(dtype))
+        testset = pd.read_csv(testing, usecols=range(0,5), dtype=dict(dtype))
+
+        trainset = reprocess(trainset)
+        testset = reprocess(testset)
 
         # training process
-        mfg = MFGeneral(0.003, 0.02, 0.02, 5, 70, ["userId", "webId", "rating"])
+        mfg = MFGeneral(0.003, 0.02, 0.02, 10, 70, ["userId", "webId", "rating"])
         mfg.fit(trainset, testset)
         print("Final rmse: ", mfg.rmse, "mae: ", mfg.mae)

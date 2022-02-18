@@ -18,8 +18,9 @@ seterr(all='raise')
 # 评分预测    1-5
 class Bias_rmf(object):
 
-    def __init__(self, alpha, reg_u, reg_w, reg_bu, reg_bi, number_LatentFactors=10, number_epochs=10,
+    def __init__(self, eta, alpha, reg_u, reg_w, reg_bu, reg_bi, number_LatentFactors=10, number_epochs=10,
                  columns=["uid", "iid", "rating", "mean"]):
+        self.eta = eta # 网络偏置权重
         self.alpha = alpha  # 学习率
         self.reg_u = reg_u  # P矩阵正则
         self.reg_w = reg_w  # Q矩阵正则
@@ -119,16 +120,16 @@ class Bias_rmf(object):
                 ## Item-LF W
                 v_u = U[uid]  # 用户向量
                 v_i = W[iid]  # 物品向量
-                err = np.float32(r_ui - np.dot(v_u, v_i) * 0.9 - (mean + bu[uid] + bi[iid]) * 0.1)
+                err = np.float32(r_ui - np.dot(v_u, v_i) * (1 - self.eta) - (mean + bu[uid] + bi[iid]) * self.eta)
 
-                v_u += self.alpha * (err * v_i * 0.9 - self.reg_u * v_u)
-                v_i += self.alpha * (err * v_u * 0.9 - self.reg_w * v_i)
+                v_u += self.alpha * (err * v_i * (1 - self.eta) - self.reg_u * v_u)
+                v_i += self.alpha * (err * v_u * (1 - self.eta) - self.reg_w * v_i)
 
                 U[uid] = v_u
                 W[iid] = v_i
 
-                bu[uid] += self.alpha * (err * 0.1 - self.reg_bu * bu[uid])
-                bi[iid] += self.alpha * (err * 0.1 - self.reg_bi * bi[iid])
+                bu[uid] += self.alpha * (err * self.eta - self.reg_bu * bu[uid])
+                bi[iid] += self.alpha * (err * self.eta - self.reg_bi * bi[iid])
 
             except:
                 print("+++++++++++++++++++")
@@ -150,7 +151,7 @@ class Bias_rmf(object):
         for uid, iid, r_ui, mean in self.trainset.itertuples(index=False):
             v_u = U[uid]  # 用户向量
             v_i = W[iid]  # 物品向量
-            cost += pow(r_ui - np.dot(v_u, v_i) * 0.9 - (mean + bu[uid] + bi[iid]) * 0.1, 2)
+            cost += pow(r_ui - np.dot(v_u, v_i) * (1 - self.eta) - (mean + bu[uid] + bi[iid]) * self.eta, 2)
 
         for uid in self.users_ratings.index:
             cost += self.reg_w * np.linalg.norm(U[uid]) + self.reg_bu * bu[uid]
@@ -179,7 +180,7 @@ class Bias_rmf(object):
                     bias_i = bi[iid]
                 if uid in self.users_ratings.index and iid in self.items_ratings.index:
                     mf = np.dot(U[uid], W[iid])
-                pred_rating = mf * 0.9 + (mean + bias_u + bias_i) * 0.1
+                pred_rating = mf * (1 - self.eta) + (mean + bias_u + bias_i) * self.eta
 
             except Exception as e:
                 print(e)
@@ -222,11 +223,12 @@ if __name__ == '__main__':
 
         # catch local matrix
         local_means = trainset['rating'].groupby([trainset['userRg'], trainset['webRg']]).mean()
+
         trainset = reprocess(trainset, local_means)
         testset = reprocess(testset, local_means)
 
         # training process
-        brm = Bias_rmf(0.003, 0.02, 0.02, 0.02, 0.02, 10, 60, ["userId", "webId", "rating", "mean"])
+        brm = Bias_rmf(0.5, 0.003, 0.02, 0.02, 0.02, 0.02, 1, 70, ["userId", "webId", "rating", "mean"])
         brm.fit(trainset, testset)
 
         print("Final rmse: ", brm.rmse, "mae: ", brm.mae)

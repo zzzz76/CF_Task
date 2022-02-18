@@ -89,7 +89,7 @@ def filter_testset(testset):
 
 
 if __name__ == '__main__':
-    training = "../dataset1/10/training.csv"
+    training = "../dataset1/5/training.csv"
     testing = "../dataset1/95/testing.csv"
 
     dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32)]

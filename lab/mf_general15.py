@@ -181,6 +181,6 @@ if __name__ == '__main__':
         testset = pd.read_csv(testing, usecols=range(3), dtype=dict(dtype))
 
         # training process
-        mfg = MFGeneral(0.003, 0.02, 0.02, 5, 70, ["userId", "webId", "rating"])
+        mfg = MFGeneral(0.003, 0.02, 0.02, 10, 70, ["userId", "webId", "rating"])
         mfg.fit(trainset, testset)
         print("Final rmse: ", mfg.rmse, "mae: ", mfg.mae)

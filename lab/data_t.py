@@ -42,10 +42,10 @@ if __name__ == '__main__':
     ur_map = load_map(user_path, 0, 2)
     wr_map = load_map(web_path, 0, 4)
 
-    for i in [2,3,4,5,6]:
-        print("----- Training Density %d/20 -----" % i)
-        training = "../dataset1/" + str(i * 5) + "/training.csv"
-        testing = "../dataset1/"+ str(i * 5) +"/testing.csv"
+    for i in [2,4,6,8]:
+        print("----- Training Density %d%% -----" % i)
+        training = "../dataset1/" + str(i) + "/training.csv"
+        testing = "../dataset1/"+ str(i) +"/testing.csv"
         print("load trainset: " + training)
         print("load testset:" + testing)
 

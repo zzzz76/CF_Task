@@ -180,7 +180,9 @@ class Bias_rmf(object):
                     bias_i = bi[iid]
                 if uid in self.users_ratings.index and iid in self.items_ratings.index:
                     mf = np.dot(U[uid], W[iid])
-                pred_rating = mf * (1 - self.eta) + (mean + bias_u + bias_i) * self.eta
+                    pred_rating = mf * (1 - self.eta) + (mean + bias_u + bias_i) * self.eta
+                else:
+                    pred_rating = mean + bias_u + bias_i
 
             except Exception as e:
                 print(e)
@@ -208,10 +210,10 @@ if __name__ == '__main__':
     # training = "../dataset1/30/training.csv"
     # testing = "../dataset1/30/testing.csv"
 
-    for i in [2,3,4,5,6]:
-        print("----- Training Density %d/20 -----" % i)
-        training = "../dataset1/" + str(i * 5) + "/training.csv"
-        testing = "../dataset1/"+ str(i * 5) +"/testing.csv"
+    for i in [2,4,6,8]:
+        print("----- Training Density %d%% -----" % i)
+        training = "../dataset1/" + str(i) + "/training.csv"
+        testing = "../dataset1/"+ str(i) +"/testing.csv"
 
         print("load trainset: " + training)
         print("load testset:" + testing)
@@ -228,7 +230,7 @@ if __name__ == '__main__':
         testset = reprocess(testset, local_means)
 
         # training process
-        brm = Bias_rmf(0.5, 0.003, 0.02, 0.02, 0.02, 0.02, 2, 70, ["userId", "webId", "rating", "mean"])
+        brm = Bias_rmf(0.3, 0.003, 0.02, 0.02, 0.02, 0.02, 10, 70, ["userId", "webId", "rating", "mean"])
         brm.fit(trainset, testset)
 
         print("Final rmse: ", brm.rmse, "mae: ", brm.mae)

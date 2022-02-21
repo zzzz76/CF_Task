@@ -134,6 +134,23 @@ class BLGeneral(object):
                 yield uid, iid, real_rating, pred_rating
 
 
+def reprocess(dataset, local_means):
+    """
+    reprocess data with region-region ratings
+    :param dataset: data without mean ratings
+    :param local_means: local mean ratings
+    :return: the dataset with mean ratings
+    """
+    _dataset = []
+    for uid, iid, rating, urg, irg in dataset.itertuples(index=False):
+        mean = local_means.get((urg, irg))
+        if not mean is None:
+            _dataset.append([uid, iid, rating])
+
+    _dataset = pd.DataFrame(_dataset, columns=['userId','webId','rating'])
+    return  _dataset
+
+
 if __name__ == '__main__':
 
     for i in [2,3,4,5,6]:
@@ -147,12 +164,17 @@ if __name__ == '__main__':
         print("load testset:" + testing)
 
         # load data
-        dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32)]
-        trainset = pd.read_csv(training, usecols=range(3), dtype=dict(dtype))
-        testset = pd.read_csv(testing, usecols=range(3), dtype=dict(dtype))
+        dtype = [("userId", np.int32), ("webId", np.int32), ("rating", np.float32), ("userRg", np.str_), ("webRg", np.str_)]
+        trainset = pd.read_csv(training, usecols=range(0,5), dtype=dict(dtype))
+        testset = pd.read_csv(testing, usecols=range(0,5), dtype=dict(dtype))
+
+        # catch local matrix
+        local_means = trainset['rating'].groupby([trainset['userRg'], trainset['webRg']]).mean()
+        trainset = reprocess(trainset, local_means)
+        testset = reprocess(testset, local_means)
 
         # training process
-        blg = BLGeneral(70, 0.005, 0.001, ["userId", "webId", "rating"])
+        blg = BLGeneral(70, 0.01, 0.02, ["userId", "webId", "rating"])
         blg.fit(trainset, testset)
         print("Final rmse: ", blg.rmse, "mae: ", blg.mae)
 

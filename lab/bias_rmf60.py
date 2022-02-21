@@ -228,7 +228,7 @@ if __name__ == '__main__':
         testset = reprocess(testset, local_means)
 
         # training process
-        brm = Bias_rmf(0.2, 0.003, 0.02, 0.02, 0.02, 0.02, 35, 70, ["userId", "webId", "rating", "mean"])
+        brm = Bias_rmf(0.5, 0.003, 0.02, 0.02, 0.02, 0.02, 7, 70, ["userId", "webId", "rating", "mean"])
         brm.fit(trainset, testset)
 
         print("Final rmse: ", brm.rmse, "mae: ", brm.mae)
